@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+//кабинеты
+model Cabinet {
+  id      String @id @default(uuid())
+  number  String
+  officeId String
+}
+//люди в кабинете
+model UserOnCabinet {
+  cabinetId String
+  userId    String
+
+  @@id([cabinetId, userId]) 
+}
+
+//Клиенты
+model Client {
+  id         String  @id @default(uuid())
+  telegramId String
+  firstName  String
+  lastName   String
+  middleName String
+  birthDate  DateTime
+}
+
+//Офис
+model Office {
+  id     String @id @default(uuid())
+  number String
+  adress String
+}
+//Возможности
+model Opportunity {
+  id   String @id @default(uuid())
+  name String
+}
+//Позиция
+model Position {
+  id          String @id @default(uuid())
+  name        String
+  description String?
+}
+//Роль
+model Role {
+  id     String @id @default(uuid())
+  name String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  creatorId  String
+
+  users User[]
+}
+//Услуги
+model Service {
+  id          String @id @default(uuid())
+  name        String
+  description String?
+  price       Int
+}
+//Записи услуг
+model ServiceRecord {
+  id            String   @id @default(uuid())
+  clientId      String
+  workerId      String
+  dateTime      DateTime
+  price         Float
+  serviceId     String
+  officeId      String
+  workCabinetId String
+  result        String?
+}
+//Пользователи
+model User {
+  id         String   @id @default(uuid())
+  lastName   String
+  firstName  String
+  middleName String?
+  birthDate  DateTime
+  department String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  login      String   @unique
+  email      String   @unique
+  password   String
+  roleId     String
+  telegramId String?  @unique
+
+  role       Role     @relation(fields: [roleId], references: [id]) 
+}
+model Schedule {
+  id         String   @id @default(uuid())
+  date       DateTime
+  startTime  DateTime
+  endTime    DateTime
+  userId     String
+  cabinetId  String
+}
+
+model ServiceCategory {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+}
+
+model UserStatus {
+  id         String   @id @default(uuid())
+  name       String
+  description String?
+}
+model ClientHistory {
+  id          String   @id @default(uuid())
+  clientId    String
+  serviceId   String
+  date        DateTime
+  feedbackId  String?  
+}
+
+//Отзывы
+model Review {
+  id         String   @id @default(uuid())
+  serviceId  String
+  clientId   String
+  grade      Int
+  comment    String?
+
+}
+//Статусы заказа
+enum EStatusRecord {
+  canceled
+  Done
+  Problems
+}
+//Статусы пользователей
+
+//статусы кабинетов
+enum ECabinetStatus {
+  AVAILABLE
+  OCCUPIED
+  UNDER_MAINTENANCE
+}
+// оценнка 
+enum EGrade {
+  VERY_BAD
+  BAD
+  OK
+  GOOD
+  EXCELLENT
+}
