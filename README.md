@@ -1,0 +1,1 @@
+# beatu-salon-frontend
