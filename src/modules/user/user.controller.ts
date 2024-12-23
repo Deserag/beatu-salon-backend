@@ -22,7 +22,13 @@ import {
 @Controller('user')
 export class UserController {
   constructor(private readonly _userService: UserService) {}
-
+  @Get('user-roles')
+  @ApiOperation({ summary: 'Получение ролей' })
+  @ApiResponse({ status: 200, description: 'Роли успешно получены' })
+  @ApiResponse({ status: 404, description: 'Роли не найдены' })
+  async getUserRoles() {
+    return await this._userService.getUserRoles();
+  }
   @Get(':id')
   @ApiOperation({ summary: 'Получение информации о пользователе' })
   @ApiResponse({ status: 200, description: 'Пользователь успешно получен' })
@@ -30,6 +36,7 @@ export class UserController {
   async getUserInfo(@Param('id') id: string) {
     return await this._userService.getUserInfo(id);
   }
+
   @Post('list')
   @ApiOperation({ summary: 'Поиск пользователей с фильтрами' })
   @ApiResponse({ status: 200, description: 'Пользователи успешно найдены' })

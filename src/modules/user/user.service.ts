@@ -363,6 +363,19 @@ export class UserService {
     }
   }
 
+  async getUserRoles(){
+    const role = await this._prisma.role.findMany(
+      {
+        select: {
+          id: true,
+          name: true,
+        }
+      }
+    )
+    console.log(role)
+    return role
+  }
+
   async getUserInfo(userId: string) {
     try {
       const user = await this._prisma.user.findUnique({
