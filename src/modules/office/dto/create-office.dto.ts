@@ -5,7 +5,7 @@ export class CreateOfficeDTO {
     @IsOptional()
     @IsString()
     @ApiProperty({example: 'id пользователя', required: true})
-    id: string;
+    creatorId: string;
 
     @IsOptional()
     @IsString()
@@ -17,4 +17,11 @@ export class CreateOfficeDTO {
     @ApiProperty({example: 'id кабинета', required: true})
     adress: string;
 
+}
+
+export class UpdateOfficeDTO extends CreateOfficeDTO {
+    @IsOptional()
+    @IsString()
+    @ApiProperty({example: 'id офиса', required: true})
+    id: string;
 }

@@ -2,8 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { CreateServiceDTO, CreateUserDTO, GetUserDTO } from './dto';
 import { parse } from 'path';
-import { PutRoleDTO } from './dto/put-role.dto';
+import { CreateRoleDTO, PutRoleDTO, UpdateRoleDTO } from './dto/get-role.dto';
 import { CreateUserRoleDTO } from './dto/create-user-role.dto';
+import { GetUserRoleDTO } from './dto/get-role.dto';
+import {
+  CreateDepartmentDTO,
+  GetUserDepartmentDTO,
+} from './dto/get-department.dto';
+import { error } from 'console';
 
 @Injectable()
 export class UserService {
@@ -30,7 +36,7 @@ export class UserService {
 
         return { user };
       } else {
-        const [users, totalCount] = await this._prisma.$transaction([
+        const [rows, totalCount] = await this._prisma.$transaction([
           this._prisma.user.findMany({
             skip: (page - 1) * size,
             take: size,
@@ -40,7 +46,7 @@ export class UserService {
         ]);
 
         return {
-          users,
+          rows,
           totalCount,
           totalPages: Math.ceil(totalCount / size),
           currentPage: page,
@@ -48,6 +54,81 @@ export class UserService {
       }
     } catch (error) {
       throw new Error('Ошибка при получении пользователей: ' + error.message);
+    }
+  }
+  async getRole(getUserRoleDTO: GetUserRoleDTO) {
+    try {
+      const { name, page = 1, size = 10 } = getUserRoleDTO;
+
+      if (name) {
+        const roles = await this._prisma.role.findMany({
+          where: {
+            name: { contains: name, mode: 'insensitive' },
+          },
+        });
+
+        if (!roles || roles.length === 0) {
+          throw new Error('Роль с указанным именем не найдена');
+        }
+
+        return { roles };
+      } else {
+        const [rows, totalCount] = await this._prisma.$transaction([
+          this._prisma.role.findMany({
+            skip: (page - 1) * size,
+            take: size,
+            orderBy: { createdAt: 'desc' },
+          }),
+          this._prisma.role.count(),
+        ]);
+
+        return {
+          rows,
+          totalCount,
+          totalPages: Math.ceil(totalCount / size),
+          currentPage: page,
+        };
+      }
+    } catch (error) {
+      throw new Error('Ошибка при получении ролей: ' + error.message);
+    }
+  }
+
+  async getDepartment(getUserDepartmentDTO: GetUserDepartmentDTO) {
+    try {
+      const { name, page = 1, size = 10 } = getUserDepartmentDTO;
+
+      if (name) {
+        const departments = await this._prisma.department.findMany({
+          where: {
+            name: { contains: name, mode: 'insensitive' },
+          },
+        });
+
+        if (!departments || departments.length === 0) {
+          throw new Error('Отдел с указанным именем не найден');
+        }
+
+        return { departments };
+      } else {
+        const [rows, totalCount] = await this._prisma.$transaction([
+          this._prisma.department.findMany({
+            skip: (page - 1) * size,
+            take: size,
+            orderBy: { createdAt: 'desc' },
+          }),
+          this._prisma.department.count(),
+        ]);
+
+        return {
+          rows,
+          totalCount,
+          totalPages: Math.ceil(totalCount / size),
+          currentPage: page,
+        };
+      }
+    } catch (error) {
+      throw new Error('Ошибка при получении отделов: ' + error.message);
     }
   }
 
@@ -127,6 +208,86 @@ export class UserService {
     }
   }
 
+  async createRole(createRoleDTO: CreateRoleDTO) {
+    if (!createRoleDTO.name) {
+      throw new Error('Недостаточно полей для заполнения');
+    }
+    try {
+      const adminId = await this._prisma.user.findUnique({
+        where: { id: createRoleDTO.creatorId },
+      });
+      if (!adminId) {
+        throw new Error('Администратор с указанным ID не найден');
+      }
+      const createRole = await this._prisma.role.create({
+        data: {
+          ...createRoleDTO,
+        },
+      });
+      return createRole;
+    } catch (error) {
+      throw new Error('Ошибка при создании роли: ' + error.message);
+    }
+  }
+
+  async updateRole(updateRoleDTO: UpdateRoleDTO) {
+    if (
+      !updateRoleDTO.name ||
+      !updateRoleDTO.roleId ||
+      !updateRoleDTO.adminId
+    ) {
+      throw new Error('Недостаточно полей для обновления');
+    }
+    try {
+      const roleId = await this._prisma.role.findUnique({
+        where: { id: updateRoleDTO.roleId },
+      });
+      if (!roleId) {
+        throw new Error('Роль с указанным ID не найдена');
+      }
+
+      const adminId = await this._prisma.user.findUnique({
+        where: { id: updateRoleDTO.adminId },
+      });
+      if (!adminId) {
+        throw new Error('Администратор с указанным ID не найден');
+      }
+      const updateUser = await this._prisma.role.update({
+        where: { id: updateRoleDTO.roleId },
+        data: {
+          ...updateRoleDTO,
+        },
+      });
+      return updateUser;
+    } catch (error) {
+      throw new Error('Ошибка при обновлении роли: ' + error.message);
+    }
+  }
+
+  async createDepartment(createDepartmentDTO: CreateDepartmentDTO) {
+    if (!createDepartmentDTO.name || !createDepartmentDTO.creatorId) {
+      throw new Error('Недостаточно полей для заполнения');
+    }
+    try {
+      const adminId = await this._prisma.user.findUnique({
+        where: { id: createDepartmentDTO.creatorId },
+      });
+      if (!adminId) {
+        throw new Error('Администратор с указанным ID не найден');
+      }
+      const createdDepartment = await this._prisma.department.create({
+        data: {
+          ...createDepartmentDTO,
+        },
+      });
+      return createdDepartment;
+    } catch (error) {
+      throw new Error('Ошибка при создании отдела: ' + error.message);
+    }
+  }
+
+  async updateDepartmentInfo() {}
+
   async deleteUser(id: string) {
     try {
       const user = await this._prisma.user.findUnique({ where: { id } });
@@ -178,24 +339,17 @@ export class UserService {
     }
   }
 
-  async putUserRole(roleDTO: PutRoleDTO){
+  async putUserRole(roleDTO: PutRoleDTO) {
     try {
-      const  adminId = roleDTO.adminId
-    }
-    catch (error){
+      const adminId = roleDTO.adminId;
+    } catch (error) {
       throw new Error('Ошибка при создании роли:' + error.message);
     }
   }
 
-  async putNewRole(){
+  async putNewRole() {}
 
-  }
-
-  async getUserRole(){
-    return await this._prisma.role.findMany()
-  }
-
-  async CreateUserRole(creteRoleDTO: CreateUserRoleDTO){
+  async CreateUserRole(creteRoleDTO: CreateUserRoleDTO) {
     try {
       const createdUserRole = await this._prisma.role.create({
         data: {
@@ -204,9 +358,24 @@ export class UserService {
       });
 
       return createdUserRole;
-    }
-    catch (error){
+    } catch (error) {
       throw new Error('Ошибка при создании роли:' + error.message);
+    }
+  }
+
+  async getUserInfo(userId: string) {
+    try {
+      const user = await this._prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      const userRole = await this._prisma.role.findUnique({
+        where: { id: user.roleId },
+        select: { name: true },
+      });
+      return { user, userRole };
+    } catch (error) {
+      throw new Error('Ошибка при получении пользователя:' + error.message);
     }
   }
 }
