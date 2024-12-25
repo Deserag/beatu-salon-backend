@@ -10,7 +10,7 @@ import {
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { GetUserDTO } from './dto/get-user.dto';
-import { CreateUserDTO } from './dto';
+import { CreateUserDTO, UpdateUserDTO } from './dto';
 import { CreateUserRoleDTO } from './dto/create-user-role.dto';
 import { CreateRoleDTO, GetUserRoleDTO } from './dto/get-role.dto';
 import {
@@ -28,6 +28,21 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'Роли не найдены' })
   async getUserRoles() {
     return await this._userService.getUserRoles();
+  }
+  @Get('users-department/:departmentId')
+  @ApiOperation({ summary: 'Получение пользователей по ID проффесии' })
+  @ApiResponse({ status: 200, description: 'Пользователи успешно получены' })
+  @ApiResponse({ status: 404, description: 'Пользователи не найдены' })
+  async getUsersWithDepartment(@Param('departmentId') departmentId: string) {
+    return await this._userService.getUsersWithDepartment(departmentId);
+  }
+
+  @Get('user-departaments')
+  @ApiOperation({ summary: 'Получение направления' })
+  @ApiResponse({ status: 200, description: 'Направления успешно получены' })
+  @ApiResponse({ status: 404, description: 'Направления не найдены' })
+  async getUserDepartaments() {
+    return await this._userService.getUserDepartament();
   }
   @Get(':id')
   @ApiOperation({ summary: 'Получение информации о пользователе' })
@@ -93,18 +108,15 @@ export class UserController {
     return await this._userService.createDepartment(CreateDepartmentDTO);
   }
 
-  @Put('update/:id')
+  @Put('update')
   @ApiOperation({ summary: 'Обновление информации пользователя' })
   @ApiResponse({
     status: 201,
     description: 'Информация пользователя успешно обновлена',
   })
   @ApiResponse({ status: 404, description: 'Пользователь не найден' })
-  async updateUser(
-    @Param('id') id: string,
-    @Body() updateUserDTO: CreateUserDTO,
-  ) {
-    return await this._userService.updateUserInfo(id, updateUserDTO);
+  async updateUser(@Body() updateUserDTO: UpdateUserDTO) {
+    return await this._userService.updateUserInfo(updateUserDTO);
   }
 
   @Delete('delete/:id')

@@ -85,7 +85,7 @@ export class OfficeService {
     if (
       !createOfficeDTO.creatorId ||
       !createOfficeDTO.number ||
-      !createOfficeDTO.adress
+      !createOfficeDTO.address
     ) {
       throw new Error('Недостаточно полей для заполнения');
     }
@@ -110,7 +110,7 @@ export class OfficeService {
     if (
       !createOfficeDTO.creatorId ||
       !createOfficeDTO.number ||
-      !createOfficeDTO.adress
+      !createOfficeDTO.address
     ) {
       throw new Error('Недостаточно полей для заполнения');
     }

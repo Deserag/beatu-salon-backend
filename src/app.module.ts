@@ -7,6 +7,7 @@ import {
   RecordModule,
   UserModule,
   OfficeModule,
+  ServiceModule,
 } from './modules';
 import { ConfigModule } from '@nestjs/config';
 @Module({
@@ -20,6 +21,7 @@ import { ConfigModule } from '@nestjs/config';
     RecordModule,
     AuthModule,
     OfficeModule,
+    ServiceModule
   ],
   controllers: [AppController],
   providers: [AppService],

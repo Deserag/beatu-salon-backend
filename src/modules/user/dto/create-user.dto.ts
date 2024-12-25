@@ -37,7 +37,7 @@ export class CreateUserDTO {
   @IsNotEmpty()
   @IsString()
   @ApiProperty({ example: 'Отдел продаж', required: true })
-  department: string;
+  departmentIds: string[];
 
   @IsNotEmpty()
   @IsString()
@@ -76,4 +76,12 @@ export class CreateUserDTO {
     description: 'Telegram ID пользователя',
   })
   telegramId: string;
+}
+
+
+export class UpdateUserDTO extends CreateUserDTO {
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty({ example: 'айди', required: true })
+  id: string
 }

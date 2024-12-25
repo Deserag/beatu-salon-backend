@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { CreateServiceDTO, CreateUserDTO, GetUserDTO } from './dto';
-import { parse } from 'path';
+import { CreateUserDTO, GetUserDTO, UpdateUserDTO } from './dto';
 import { CreateRoleDTO, PutRoleDTO, UpdateRoleDTO } from './dto/get-role.dto';
 import { CreateUserRoleDTO } from './dto/create-user-role.dto';
 import { GetUserRoleDTO } from './dto/get-role.dto';
@@ -9,7 +8,6 @@ import {
   CreateDepartmentDTO,
   GetUserDepartmentDTO,
 } from './dto/get-department.dto';
-import { error } from 'console';
 
 @Injectable()
 export class UserService {
@@ -20,7 +18,7 @@ export class UserService {
       const { name, page = 1, size = 10 } = getUserDTO;
 
       if (name) {
-        const user = await this._prisma.user.findMany({
+        const users = await this._prisma.user.findMany({
           where: {
             OR: [
               { firstName: { contains: name, mode: 'insensitive' } },
@@ -28,19 +26,33 @@ export class UserService {
               { middleName: { contains: name, mode: 'insensitive' } },
             ],
           },
+          include: {
+            departments: {
+              include: {
+                department: true,
+              },
+            },
+          },
         });
 
-        if (!user || user.length === 0) {
+        if (!users || users.length === 0) {
           throw new Error('Пользователь с указанным именем не найден');
         }
 
-        return { user };
+        return { users };
       } else {
         const [rows, totalCount] = await this._prisma.$transaction([
           this._prisma.user.findMany({
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
+            include: {
+              departments: {
+                include: {
+                  department: true, // Включаем информацию о департаменте
+                },
+              },
+            },
           }),
           this._prisma.user.count(),
         ]);
@@ -56,6 +68,7 @@ export class UserService {
       throw new Error('Ошибка при получении пользователей: ' + error.message);
     }
   }
+
   async getRole(getUserRoleDTO: GetUserRoleDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserRoleDTO;
@@ -132,6 +145,37 @@ export class UserService {
     }
   }
 
+  async getUserDepartament() {
+    try {
+      const departments = await this._prisma.department.findMany();
+      return departments;
+    } catch (error) {
+      throw new Error('Ошибка при получении отделов: ' + error.message);
+    }
+  }
+
+  async getUsersWithDepartment(departmentId: string) {
+    try {
+      const users = await this._prisma.departmentUser.findMany({
+        where: {
+          departmentId: departmentId,
+        },
+      });
+
+      const departmentUsers = await this._prisma.user.findMany({
+        where: {
+          id: {
+            in: users.map((user) => user.userId),
+          },
+        },
+      });
+
+      return departmentUsers;
+    } catch (error) {
+      throw new Error('Ошибка при получении пользователей: ' + error.message);
+    }
+  }
+
   async createUser(createUserDTO: CreateUserDTO) {
     if (
       !createUserDTO.login ||
@@ -189,17 +233,32 @@ export class UserService {
     }
   }
 
-  async updateUserInfo(id: string, userDTO: CreateUserDTO) {
+  async updateUserInfo(userDTO: UpdateUserDTO) {
     try {
-      const user = await this._prisma.user.findUnique({ where: { id } });
+      const user = await this._prisma.user.findUnique({
+        where: { id: userDTO.id },
+      });
       if (!user) {
         throw new Error('Пользователь с указанным ID не найден');
       }
 
+      const { departmentIds, ...userData } = userDTO;
+
       const updatedUser = await this._prisma.user.update({
-        where: { id },
-        data: userDTO,
+        where: { id: userDTO.id },
+        data: {
+          ...userData,
+          departments: departmentIds
+            ? {
+                deleteMany: {},
+                create: departmentIds.map((departmentId) => ({
+                  departmentId,
+                })),
+              }
+            : undefined,
+        },
       });
+
       return updatedUser;
     } catch (error) {
       throw new Error(
@@ -363,17 +422,15 @@ export class UserService {
     }
   }
 
-  async getUserRoles(){
-    const role = await this._prisma.role.findMany(
-      {
-        select: {
-          id: true,
-          name: true,
-        }
-      }
-    )
-    console.log(role)
-    return role
+  async getUserRoles() {
+    const role = await this._prisma.role.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    console.log(role);
+    return role;
   }
 
   async getUserInfo(userId: string) {

@@ -6,56 +6,117 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-//кабинеты
+// Кабинеты
 model Cabinet {
-  id      String @id @default(uuid())
-  number  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-  creatorId   String
-  officeId String
+  id         String   @id @default(uuid())
+  number     String
+  status     ECabinetStatus @default(AVAILABLE)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  creatorId  String
+  officeId   String
+
+  office     Office @relation(fields: [officeId], references: [id])
+  schedules  Schedule[]
+  users      UserOnCabinet[]
+  services   ServiceRecord[]
 }
-//люди в кабинете
+
+// Люди в кабинетах
 model UserOnCabinet {
   cabinetId String
   userId    String
 
+  cabinet   Cabinet @relation(fields: [cabinetId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
   @@id([cabinetId, userId]) 
 }
 
-//Клиенты
+// Продукты
+model Product {
+  id         String   @id @default(uuid())
+  name       String
+  quantity   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  creatorId  String
+
+  offices    ProductOffice[]
+  prices     ProductPrice[]
+}
+
+// Продукты в офисе
+model ProductOffice {
+  officeId   String
+  productId  String
+  quantity   Int
+
+  office     Office   @relation(fields: [officeId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@id([officeId, productId])
+}
+
+// Цены на продукты
+model ProductPrice {
+  officeId   String
+  productId  String
+  price      Float
+  creatorId  String
+
+  office     Office   @relation(fields: [officeId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@id([officeId, productId])  
+}
+
+// Клиенты
 model Client {
-  id         String  @id @default(uuid())
-  telegramId String
+  id         String   @id @default(uuid())
+  telegramId String   @unique
   firstName  String
   lastName   String
   middleName String
   birthDate  DateTime
+
+  serviceRecords ServiceRecord[]
+  clientHistories ClientHistory[]
+  reviews    Review[]
 }
 
-//Офис
+// Офисы
 model Office {
-  id     String @id @default(uuid())
-  number String
-  adress String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-  creatorId   String
+  id         String   @id @default(uuid())
+  number     String
+  address    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  creatorId  String
+
+  cabinets   Cabinet[]
+  products   ProductOffice[]
+  services   ServiceRecord[]
+  productPrices ProductPrice[]
 }
-//Возможности
+
+// Возможности
 model Opportunity {
   id   String @id @default(uuid())
   name String
 }
-//Позиция
+
+// Позиции
 model Position {
-  id          String @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
 }
-//Роль
+
+// Роли
 model Role {
   id          String   @id @default(uuid())
   name        String
@@ -68,14 +129,23 @@ model Role {
   users       User[]
 }
 
-//Услуги
+// Услуги
 model Service {
-  id          String @id @default(uuid())
-  name        String
-  description String?
-  price       Int
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  price         Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  serviceRecords ServiceRecord[]
+  categories     ServiceCategory[]
+  reviews        Review[]
+  clientHistories ClientHistory[] 
 }
-//Записи услуг
+
+// Записи услуг
 model ServiceRecord {
   id            String   @id @default(uuid())
   clientId      String
@@ -86,15 +156,21 @@ model ServiceRecord {
   officeId      String
   workCabinetId String
   result        String?
+
+  client        Client   @relation(fields: [clientId], references: [id])
+  worker        User     @relation(fields: [workerId], references: [id])
+  service       Service  @relation(fields: [serviceId], references: [id])
+  office        Office   @relation(fields: [officeId], references: [id])
+  cabinet       Cabinet  @relation(fields: [workCabinetId], references: [id])
 }
-//Пользователи
+
+// Пользователи
 model User {
   id         String   @id @default(uuid())
   lastName   String
   firstName  String
   middleName String?
   birthDate  DateTime
-  department String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   login      String   @unique
@@ -103,18 +179,38 @@ model User {
   roleId     String
   telegramId String?  @unique
 
-  role       Role     @relation(fields: [roleId], references: [id]) 
+  role       Role     @relation(fields: [roleId], references: [id])
+  schedules  Schedule[]
+  cabinets   UserOnCabinet[]
+  services   ServiceRecord[]
+  departments DepartmentUser[]
 }
 
+// Отделы
 model Department {
-  id         String   @id @default(uuid())
-  name       String
+  id          String   @id @default(uuid())
+  name        String
   description String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  deletedAt  DateTime?
-  creatorId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  creatorId   String
+
+  users       DepartmentUser[]
 }
+
+// Пользователи в отделах
+model DepartmentUser {
+  userId       String
+  departmentId String
+
+  user         User      @relation(fields: [userId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@id([userId, departmentId])
+}
+
+// Расписание
 model Schedule {
   id         String   @id @default(uuid())
   date       DateTime
@@ -122,51 +218,61 @@ model Schedule {
   endTime    DateTime
   userId     String
   cabinetId  String
+
+  user       User     @relation(fields: [userId], references: [id])
+  cabinet    Cabinet  @relation(fields: [cabinetId], references: [id])
 }
 
+// Категории услуг
 model ServiceCategory {
   id          String   @id @default(uuid())
   name        String
   description String?
+
+  services    Service[]
 }
 
-model UserStatus {
-  id         String   @id @default(uuid())
-  name       String
-  description String?
-}
+// История клиентов
 model ClientHistory {
   id          String   @id @default(uuid())
   clientId    String
   serviceId   String
   date        DateTime
-  feedbackId  String?  
+  feedbackId  String?
+
+  client      Client   @relation(fields: [clientId], references: [id])
+  service     Service  @relation(fields: [serviceId], references: [id])
+  feedback    Review?  @relation(fields: [feedbackId], references: [id])
 }
 
-//Отзывы
+// Отзывы
 model Review {
   id         String   @id @default(uuid())
   serviceId  String
   clientId   String
-  grade      Int
+  grade      EGrade
   comment    String?
 
+  service    Service  @relation(fields: [serviceId], references: [id])
+  client     Client   @relation(fields: [clientId], references: [id])
+  clientHistories ClientHistory[]
 }
-//Статусы заказа
-enum EStatusRecord {
-  canceled
-  Done
-  Problems
-}
-//Статусы пользователей
 
-//статусы кабинетов
+// Статусы заказа
+enum EStatusRecord {
+  CANCELED
+  DONE
+  PROBLEMS
+}
+
+// Статусы кабинетов
 enum ECabinetStatus {
   AVAILABLE
   OCCUPIED
   UNDER_MAINTENANCE
 }
-// оценнка 
+
+// Оценка
 enum EGrade {
   VERY_BAD
   BAD
