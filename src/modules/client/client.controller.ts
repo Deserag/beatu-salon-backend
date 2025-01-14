@@ -1,8 +1,9 @@
 import { Body, Controller } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { GetUserDTO } from '../user';
-import { CreateClientDTO, GetClientDTO, GetClientOrderDTO } from './dto';
+import { GetClientDTO } from './dto';
+import { CreateClientDTO } from './dto/create-client.dto';
 import { ClientService } from './client.service';
+import { GetMeaningDTO } from '../dto';
 
 @ApiTags("client")
 @Controller("client")
@@ -11,7 +12,7 @@ export class ClientController {
 
   @ApiTags('/list')
   @ApiOperation({ summary: 'Получение списка клиентов' })
-  @ApiBody({ type: GetUserDTO })
+  @ApiBody({ type: GetMeaningDTO })
   async getUser(@Body() getUserDTO: GetClientDTO) {
     return await this._clientService.getClients(getUserDTO);
   }
@@ -44,10 +45,10 @@ export class ClientController {
     return await this._clientService.updateOrderClient(updateClientOrder);
   }
 
-  @ApiTags('/get-orders-client')
-  @ApiOperation({ summary: 'Получение заказов клиента' })
-  @ApiBody({ type: GetClientOrderDTO })
-  async getOrdersClients(@Body() getClientOrderDTO: GetClientOrderDTO) {
-    return await this._clientService.getOrdersClients(getClientOrderDTO);
-  }
+  // @ApiTags('/get-orders-client')
+  // @ApiOperation({ summary: 'Получение заказов клиента' })
+  // @ApiBody({ type: GetClientOrderDTO })
+  // async getOrdersClients(@Body() getClientOrderDTO: GetClientOrderDTO) {
+  //   return await this._clientService.getOrdersClients(getClientOrderDTO);
+  // }
 }

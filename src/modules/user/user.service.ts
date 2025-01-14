@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { CreateUserDTO, GetUserDTO, UpdateUserDTO } from './dto';
+import { CreateUserDTO,  UpdateUserDTO } from './dto';
 import { CreateRoleDTO, PutRoleDTO, UpdateRoleDTO } from './dto/get-role.dto';
 import { CreateUserRoleDTO } from './dto/create-user-role.dto';
-import { GetUserRoleDTO } from './dto/get-role.dto';
 import {
   CreateDepartmentDTO,
   GetUserDepartmentDTO,
 } from './dto/get-department.dto';
+import { GetMeaningDTO } from '../dto';
 
 @Injectable()
 export class UserService {
   private _prisma = new PrismaClient();
 
-  async getUser(getUserDTO: GetUserDTO) {
+  async getUser(getUserDTO: GetMeaningDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserDTO;
 
@@ -49,7 +49,7 @@ export class UserService {
             include: {
               departments: {
                 include: {
-                  department: true, // Включаем информацию о департаменте
+                  department: true, 
                 },
               },
             },
@@ -69,7 +69,7 @@ export class UserService {
     }
   }
 
-  async getRole(getUserRoleDTO: GetUserRoleDTO) {
+  async getRole(getUserRoleDTO: GetMeaningDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserRoleDTO;
 
