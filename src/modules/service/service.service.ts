@@ -9,6 +9,7 @@ import {
 } from './dto';
 import { GetMeaningDTO } from '../dto';
 import { error } from 'console';
+import { UpdateServiceUserList } from './dto/update-service-user-list.dto';
 
 @Injectable()
 export class ServiceService {
@@ -28,6 +29,18 @@ export class ServiceService {
     }
   }
   async GetProductForId(id: string) {}
+
+  async GetServiceListUser(serviceId: string) {
+    try {
+      const serviceUsers = await this._prisma.workerOnService.findMany({
+        where: { serviceId },
+      });
+      return serviceUsers;
+    } catch (error) {
+      throw new Error('Ошибка при получении пользователей для услуги: ' + error.message);
+    }
+  }
+  
 
   async GetProfuctForSaleForId(id: string) {}
 
@@ -224,6 +237,49 @@ export class ServiceService {
   //         throw new Error('Ошибка при обновлении продажи товара: ' + error.message);
   //     }
   // }
+  async CreateListServiceUser(createServiceUserListDTO: UpdateServiceUserList) {
+    const { serviceId, userId, creatorId } = createServiceUserListDTO;
+
+    try {
+      const service = await this._prisma.service.findUnique({
+        where: { id: serviceId },
+      });
+      if (!service) {
+        throw new Error('Услуга с указанным ID не найдена');
+      }
+      const creator = await this._prisma.user.findUnique({
+        where: { id: creatorId },
+      });
+      if (!creator) {
+        throw new Error('Создатель с указанным ID не найден');
+      }
+      const users = await this._prisma.user.findMany({
+        where: { id: { in: userId } },
+      });
+      if (users.length !== userId.length) {
+        throw new Error('Один или несколько пользователей не найдены');
+      }
+      const workersOnService = userId.map((id) => ({
+        serviceId,
+        userId: id,
+        creatorId,
+      }));
+      const createdWorkers = await this._prisma.$transaction(
+        workersOnService.map((worker) =>
+          this._prisma.workerOnService.create({ data: worker }),
+        ),
+      );
+
+      return {
+        message: 'Пользователи успешно добавлены к услуге',
+        createdWorkers,
+      };
+    } catch (error) {
+      throw new Error(
+        'Ошибка при добавлении пользователей к услуге: ' + error.message,
+      );
+    }
+  }
 
   async UpdateProduct(updateProductDTO: UpdateProductDTO) {
     try {

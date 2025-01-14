@@ -17,6 +17,7 @@ import {
   UpdateProductDTO,
 } from './dto';
 import { GetMeaningDTO } from '../dto';
+import { UpdateServiceUserList } from './dto/update-service-user-list.dto';
 
 @ApiTags('service')
 @Controller('service')
@@ -37,6 +38,15 @@ export class ServiceController {
   async getProductInfo(@Param('id') id: string) {
     return await this._serviceService.GetProductForId(id);
   }
+
+  @Get('service-list-workers')
+  @ApiOperation({ summary: 'Получение списка работников для услуги' })
+  @ApiResponse({ status: 200, description: 'Список успешно получен' })
+  @ApiResponse({ status: 404, description: 'Список не найден' })
+  async getServiceWorkersList(@Param('id') id: string) {
+    return await this._serviceService.GetServiceListUser(id);
+  }
+
   @Post('services-list')
   @ApiOperation({ summary: 'Получение списка услуг' })
   @ApiResponse({ status: 200, description: 'Услуги успешно получены' })
@@ -75,6 +85,21 @@ export class ServiceController {
   async createProduct(@Body() createProductDTO: CreateProductDTO) {
     return await this._serviceService.CreateProduct(createProductDTO);
   }
+
+  @Post('create-list-product-user')
+  @ApiOperation({ summary: 'Назначение работиников на услугу' })
+  @ApiResponse({ status: 201, description: 'Услуга успешно назначена' })
+  @ApiResponse({
+    status: 400,
+    description: 'Недостаточно данных для назначения услуги',
+  })
+  async createListServiceUser(@Body() createProductDTO: UpdateServiceUserList) {
+    return await this._serviceService.CreateListServiceUser(createProductDTO);
+  }
+
+  //d8dcc0d7-7f84-4f51-90db-65d4c71f5464 услуга
+  //1fa65697-37ce-4d7d-819e-f81ffe44e044
+  //
 
   // @Post('create-product-sale')
   // @ApiOperation({ summary: 'Создание продажи товара' })

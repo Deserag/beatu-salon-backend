@@ -49,7 +49,7 @@ export class UserService {
             include: {
               departments: {
                 include: {
-                  department: true, // Включаем информацию о департаменте
+                  department: true, 
                 },
               },
             },

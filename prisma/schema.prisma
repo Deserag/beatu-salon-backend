@@ -142,7 +142,22 @@ model Service {
   categories     ServiceCategory[]
   reviews        Review[]
   clientHistories ClientHistory[]
+   workersOnService WorkerOnService[]
 }
+
+// Список Работников на услуге
+model WorkerOnService {
+  serviceId String
+  userId    String
+  creatorId String
+
+  service   Service @relation(fields: [serviceId], references: [id])
+  worker    User    @relation(fields: [userId], references: [id], name: "WorkerRelation")
+  creator   User    @relation(fields: [creatorId], references: [id], name: "CreatorRelation")
+
+  @@id([serviceId, userId])
+}
+
 
 // Записи услуг
 model ServiceRecord {
@@ -179,6 +194,8 @@ model User {
   telegramId  String?  @unique
 
   role        Role     @relation(fields: [roleId], references: [id])
+  workerOnServicesAsWorker WorkerOnService[] @relation(name: "WorkerRelation") 
+  workerOnServicesAsCreator WorkerOnService[] @relation(name: "CreatorRelation") 
   products    Product[] 
   schedules   Schedule[]
   cabinets    UserOnCabinet[]
