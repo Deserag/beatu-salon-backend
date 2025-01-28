@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { CreateOfficeDTO, UpdateOfficeDTO } from './dto';
 import { GetStatisticOfficeDTO } from './dto/get-statistic-office.dto';
-import { CreateCabinetDTO } from './dto/create-cabinet.dto';
+import { CreateCabinetDTO, UpdateCabinetDTO } from './dto/create-cabinet.dto';
 import { GetOfficeDTO } from './dto/get-office.dto';
 import { error } from 'console';
 
@@ -31,6 +31,10 @@ export class OfficeService {
     } catch (error) {
       throw new Error('Ошибка при получении офиса: ' + error.message);
     }
+  }
+
+  async GetCabinetInfo(id: string){
+
   }
 
   async GetOfiiceInfo(officeId: string) {
@@ -98,9 +102,9 @@ export class OfficeService {
       }
       return this._prisma.office.create({
         data: {
-          ...createOfficeDTO
-        }
-      })
+          ...createOfficeDTO,
+        },
+      });
     } catch (error) {
       throw new Error('Ошибка при создании офиса: ' + error.message);
     }
@@ -123,20 +127,71 @@ export class OfficeService {
       }
       return this._prisma.office.update({
         where: {
-          id: createOfficeDTO.id
+          id: createOfficeDTO.id,
         },
         data: {
-          ...createOfficeDTO
-        }
-      })
-    }
-    catch (error){
+          ...createOfficeDTO,
+        },
+      });
+    } catch (error) {
       throw new Error('Ошибка при обновлении офиса: ' + error.message);
     }
-}
+  }
 
   async getStatisticOffice(getStatisticOfficeDTO: GetStatisticOfficeDTO) {}
 
-  async createCabinet(createCabinet: CreateCabinetDTO) {}
-  async updateCabinet(updateCabinet: CreateCabinetDTO) {}
+  async createCabinet(createCabinetDTO: CreateCabinetDTO) {
+    const { number, officeId, creatorId } = createCabinetDTO;
+
+    if (!number || !officeId || !creatorId) {
+      throw new Error('Недостаточно полей для заполнения');
+    }
+
+    try {
+      const office = await this._prisma.office.findUnique({
+        where: { id: officeId },
+      });
+      if (!office) throw new Error('Офис с указанным ID не найден');
+
+      const user = await this._prisma.user.findUnique({
+        where: { id: creatorId },
+      });
+      if (!user) throw new Error('Пользователь с указанным ID не найден');
+
+      return await this._prisma.cabinet.create({
+        data: { number, officeId, creatorId, status: 'AVAILABLE' },
+      });
+    } catch (error) {
+      throw new Error('Ошибка при создании кабинета: ' + error.message);
+    }
+  }
+  async updateCabinet(updateCabinetDTO: UpdateCabinetDTO) {
+    const { id, number, officeId, creatorId } = updateCabinetDTO;
+
+    if (!id || !number || !officeId || !creatorId) {
+      throw new Error('Недостаточно полей для заполнения');
+    }
+
+    try {
+      const cabinet = await this._prisma.cabinet.findUnique({ where: { id } });
+      if (!cabinet) throw new Error('Кабинет с указанным ID не найден');
+
+      const office = await this._prisma.office.findUnique({
+        where: { id: officeId },
+      });
+      if (!office) throw new Error('Офис с указанным ID не найден');
+
+      const user = await this._prisma.user.findUnique({
+        where: { id: creatorId },
+      });
+      if (!user) throw new Error('Пользователь с указанным ID не найден');
+
+      return await this._prisma.cabinet.update({
+        where: { id },
+        data: { number, officeId, creatorId },
+      });
+    } catch (error) {
+      throw new Error('Ошибка при обновлении кабинета: ' + error.message);
+    }
+  }
 }
