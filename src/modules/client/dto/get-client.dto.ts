@@ -1,27 +1,19 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
 export class GetClientDTO {
-  @IsOptional()
-  @IsString()
-  @ApiProperty({
-    example: '034213',
-    description: 'телеграм id',
-  })
-  name: string;
+    @IsOptional()
+    @IsString()
+    @ApiProperty({example: '', required: true})
+    name: string
 
-  @IsOptional()
-  @IsString()
-  @ApiProperty({
-    example: '1',
-    description: 'страницы номер',
-  })
-  page: number;
+    @IsOptional()
+    @IsNumber()
+    @ApiProperty({example: 1, required: true})
+    page: 5
 
-  @IsString()
-  @ApiProperty({
-    example: '10',
-    description: 'количество элементов на странице',
-  })
-  size: number;
+    @IsOptional()
+    @IsNumber()
+    @ApiProperty({example: 10, required: true})
+    size: 10
 }

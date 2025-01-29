@@ -37,7 +37,7 @@ export class CreateUserDTO {
   @IsNotEmpty()
   @IsString()
   @ApiProperty({ example: 'Отдел продаж', required: true })
-  departmentIds: string[];
+  departments: string[];
 
   @IsNotEmpty()
   @IsString()
@@ -58,10 +58,10 @@ export class CreateUserDTO {
   @ApiProperty({ example: 'employee123', required: true })
   login: string;
 
-  @IsNotEmpty()
+  @IsOptional() 
   @IsUUID()
-  @ApiProperty({ example: 'uuid-роль', required: true })
-  roleId: string;
+  @ApiProperty({ example: 'uuid-роль', required: false })
+  roleId?: string;
 
   @IsEmail()
   @IsNotEmpty()

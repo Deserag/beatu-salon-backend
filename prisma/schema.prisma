@@ -118,7 +118,6 @@ model ServiceRecord {
   clientId      String
   workerId      String
   dateTime      DateTime
-  price         Float
   serviceId     String
   officeId      String
   workCabinetId String
@@ -140,7 +139,7 @@ model User {
   login                                           String            @unique
   email                                           String            @unique
   password                                        String
-  roleId                                          String?           // Сделано необязательным
+  roleId                                          String           // Сделано необязательным
   telegramId                                      String?           @unique
   updatedAt                                       DateTime          @updatedAt
   departments                                     DepartmentUser[]

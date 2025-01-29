@@ -188,51 +188,59 @@ export class UserService {
         'Недостаточно данных для создания пользователя. Логин, пароль, имя и фамилия обязательны.',
       );
     }
-
+  
     try {
       const userLogin = await this._prisma.user.findUnique({
         where: { login: createUserDTO.login },
       });
-
+  
       if (userLogin) {
         throw new Error('Пользователь с таким логином уже существует');
       }
-
+  
       if (createUserDTO.telegramId) {
         const userTelegramId = await this._prisma.user.findFirst({
           where: { telegramId: createUserDTO.telegramId },
         });
-
+  
         if (userTelegramId) {
           throw new Error('Пользователь с таким Telegram ID уже существует');
         }
       }
-
+  
       if (createUserDTO.email) {
         const userEmail = await this._prisma.user.findFirst({
           where: { email: createUserDTO.email },
         });
-
+  
         if (userEmail) {
           throw new Error('Пользователь с таким email уже существует');
         }
       }
+  
+      const data: any = {
+        ...createUserDTO,
+      };
+  
+      if (!createUserDTO.roleId) {
+        delete data.roleId;
+      }
+  
       const createdUser = await this._prisma.user.create({
-        data: {
-          ...createUserDTO,
-        },
+        data,
       });
-
+  
       return createdUser;
     } catch (error) {
       if (error.code === 'P2002') {
         const target = error.meta?.target || 'уникальное поле';
         throw new Error(`Нарушение уникальности: ${target} уже используется.`);
       }
-
+  
       throw new Error('Ошибка при создании пользователя: ' + error.message);
     }
   }
+  
 
   async updateUserInfo(userDTO: UpdateUserDTO) {
     try {
@@ -243,16 +251,16 @@ export class UserService {
         throw new Error('Пользователь с указанным ID не найден');
       }
 
-      const { departmentIds, ...userData } = userDTO;
+      const { departments, ...userData } = userDTO;
 
       const updatedUser = await this._prisma.user.update({
         where: { id: userDTO.id },
         data: {
           ...userData,
-          departments: departmentIds
+          departments: departments
             ? {
                 deleteMany: {},
-                create: departmentIds.map((departmentId) => ({
+                create: departments.map((departmentId) => ({
                   departmentId,
                 })),
               }
