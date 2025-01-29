@@ -11,13 +11,11 @@ import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { GetUserDTO } from './dto/get-user.dto';
 import { CreateUserDTO, UpdateUserDTO } from './dto';
-import { CreateUserRoleDTO } from './dto/create-user-role.dto';
-import { CreateRoleDTO, GetUserRoleDTO } from './dto/get-role.dto';
+import {  GetUserRoleDTO } from './dto/get-role.dto';
 import {
-  CreateDepartmentDTO,
   GetUserDepartmentDTO,
 } from './dto/get-department.dto';
-
+import { CreateRoleDTO, CreateDepartmentDTO } from './dto';
 @ApiTags('user')
 @Controller('user')
 export class UserController {
@@ -98,11 +96,11 @@ export class UserController {
   }
 
   @Post('create-department')
-  @ApiOperation({ summary: 'Создание направления' })
-  @ApiResponse({ status: 201, description: 'Направление успешно создано' })
+  @ApiOperation({ summary: 'Создание проффесии' })
+  @ApiResponse({ status: 201, description: 'Проффесия успешно создана' })
   @ApiResponse({
     status: 400,
-    description: 'Недостаточно данных для создания направления',
+    description: 'Недостаточно данных для создания проффесии',
   })
   async createDepartment(@Body() CreateDepartmentDTO: CreateDepartmentDTO) {
     return await this._userService.createDepartment(CreateDepartmentDTO);
@@ -157,16 +155,5 @@ export class UserController {
     @Body() { userId, cabinetId }: { userId: string; cabinetId: string },
   ) {
     return await this._userService.removeUserFromCabinet(userId, cabinetId);
-  }
-
-  @Post('create/role')
-  @ApiOperation({ summary: 'Создание роли' })
-  @ApiResponse({ status: 201, description: 'Роль успешно создана' })
-  @ApiResponse({
-    status: 400,
-    description: 'Недостаточно данных для создания роли',
-  })
-  async createRole(@Body() createRoleDTO: CreateUserRoleDTO) {
-    return await this._userService.CreateUserRole(createRoleDTO);
   }
 }

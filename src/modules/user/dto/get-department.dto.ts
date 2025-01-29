@@ -23,19 +23,3 @@ export class GetUserDepartmentDTO {
     size: 10
 }
 
-export class CreateDepartmentDTO {
-    @IsOptional()
-    @IsString()
-    @ApiProperty({example: '', required: true})
-    creatorId: string
-
-    @IsOptional()
-    @IsString()
-    @ApiProperty({example: '', required: true})
-    name: string
-
-    @IsOptional()
-    @IsString()
-    @ApiProperty({example: '', required: true})
-    description: string
-}

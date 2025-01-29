@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { CreateUserDTO, GetUserDTO, UpdateUserDTO } from './dto';
-import { CreateRoleDTO, PutRoleDTO, UpdateRoleDTO } from './dto/get-role.dto';
-import { CreateUserRoleDTO } from './dto/create-user-role.dto';
+import { PutRoleDTO } from './dto/get-role.dto';
 import { GetUserRoleDTO } from './dto/get-role.dto';
+import { GetUserDepartmentDTO } from './dto/get-department.dto';
 import {
+  CreateRoleDTO,
   CreateDepartmentDTO,
-  GetUserDepartmentDTO,
-} from './dto/get-department.dto';
-
+  UpdateRoleDTO,
+  UpdateDepartmentDTO,
+} from './dto';
 @Injectable()
 export class UserService {
   private _prisma = new PrismaClient();
@@ -49,7 +50,7 @@ export class UserService {
             include: {
               departments: {
                 include: {
-                  department: true, 
+                  department: true,
                 },
               },
             },
@@ -272,12 +273,6 @@ export class UserService {
       throw new Error('Недостаточно полей для заполнения');
     }
     try {
-      const adminId = await this._prisma.user.findUnique({
-        where: { id: createRoleDTO.creatorId },
-      });
-      if (!adminId) {
-        throw new Error('Администратор с указанным ID не найден');
-      }
       const createRole = await this._prisma.role.create({
         data: {
           ...createRoleDTO,
@@ -290,11 +285,7 @@ export class UserService {
   }
 
   async updateRole(updateRoleDTO: UpdateRoleDTO) {
-    if (
-      !updateRoleDTO.name ||
-      !updateRoleDTO.roleId ||
-      !updateRoleDTO.adminId
-    ) {
+    if (!updateRoleDTO.name || !updateRoleDTO.roleId) {
       throw new Error('Недостаточно полей для обновления');
     }
     try {
@@ -305,12 +296,6 @@ export class UserService {
         throw new Error('Роль с указанным ID не найдена');
       }
 
-      const adminId = await this._prisma.user.findUnique({
-        where: { id: updateRoleDTO.adminId },
-      });
-      if (!adminId) {
-        throw new Error('Администратор с указанным ID не найден');
-      }
       const updateUser = await this._prisma.role.update({
         where: { id: updateRoleDTO.roleId },
         data: {
@@ -324,16 +309,10 @@ export class UserService {
   }
 
   async createDepartment(createDepartmentDTO: CreateDepartmentDTO) {
-    if (!createDepartmentDTO.name || !createDepartmentDTO.creatorId) {
+    if (!createDepartmentDTO.name ) {
       throw new Error('Недостаточно полей для заполнения');
     }
     try {
-      const adminId = await this._prisma.user.findUnique({
-        where: { id: createDepartmentDTO.creatorId },
-      });
-      if (!adminId) {
-        throw new Error('Администратор с указанным ID не найден');
-      }
       const createdDepartment = await this._prisma.department.create({
         data: {
           ...createDepartmentDTO,
@@ -408,7 +387,7 @@ export class UserService {
 
   async putNewRole() {}
 
-  async CreateUserRole(creteRoleDTO: CreateUserRoleDTO) {
+  async CreateUserRole(creteRoleDTO: CreateRoleDTO) {
     try {
       const createdUserRole = await this._prisma.role.create({
         data: {
