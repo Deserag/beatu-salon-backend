@@ -1,26 +1,20 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Post, Put } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { GetUserDTO } from '../user';
-import {
-  CreateClientDTO,
-  CreateOrderClientDTO,
-  GetClientDTO,
-  GetClientOrderDTO,
-  UpdateClientDTO,
-} from './dto';
+import { CreateOrderClientDTO, GetClientDTO, UpdateOrderDTO } from './dto';
+import { CreateClientDTO, UpdateClientDTO } from './dto/create-client.dto';
 import { ClientService } from './client.service';
+import { GetMeaningDTO } from '../dto';
 
 @ApiTags('client')
 @Controller('client')
 export class ClientController {
   constructor(private readonly _clientService: ClientService) {}
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Получение информации о клиенте' })
-  @ApiResponse({ status: 200, description: 'Клиент успешно получен' })
-  @ApiResponse({ status: 404, description: 'Клиент не найден' })
-  async getClientInfo(@Param('id') id: string) {
-    return await this._clientService.getClientById(id);
+  @ApiTags('/list')
+  @ApiOperation({ summary: 'Получение списка клиентов' })
+  @ApiBody({ type: GetMeaningDTO })
+  async getUser(@Body() getUserDTO: GetClientDTO) {
+    return await this._clientService.getClients(getUserDTO);
   }
 
   @Post('list')
@@ -65,4 +59,25 @@ async createOrder(@Body() createOrderDTO: CreateOrderClientDTO) {
   async updateClient(@Body() updateClientDTO: UpdateClientDTO) {
     return await this._clientService.updateClient(updateClientDTO);
   }
+
+  @ApiTags('/create-order')
+  @ApiOperation({ summary: 'Создание заказа' })
+  @ApiBody({ type: CreateClientDTO })
+  async createOrderClient(@Body() createClientOrder: CreateOrderClientDTO) {
+    return await this._clientService.createOrder(createClientOrder);
+  }
+
+  @ApiTags('/update-order')
+  @ApiOperation({ summary: 'Обновление заказа' })
+  @ApiBody({ type: CreateClientDTO })
+  async updateOrderClient(@Body() updateClientOrder: UpdateOrderDTO) {
+    return await this._clientService.updateOrder(updateClientOrder);
+  }
+
+  // @ApiTags('/get-orders-client')
+  // @ApiOperation({ summary: 'Получение заказов клиента' })
+  // @ApiBody({ type: GetClientOrderDTO })
+  // async getOrdersClients(@Body() getClientOrderDTO: GetClientOrderDTO) {
+  //   return await this._clientService.getOrdersClients(getClientOrderDTO);
+  // }
 }

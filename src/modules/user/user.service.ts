@@ -1,20 +1,13 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { CreateUserDTO, GetUserDTO, UpdateUserDTO } from './dto';
-import { PutRoleDTO } from './dto/get-role.dto';
-import { GetUserRoleDTO } from './dto/get-role.dto';
-import { GetUserDepartmentDTO } from './dto/get-department.dto';
-import {
-  CreateRoleDTO,
-  CreateDepartmentDTO,
-  UpdateRoleDTO,
-  UpdateDepartmentDTO,
-} from './dto';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
+import { GetMeaningDTO } from "../dto";
+import { CreateDepartmentDTO, CreateRoleDTO, CreateUserDTO, GetUserDepartmentDTO, PutRoleDTO, UpdateRoleDTO, UpdateUserDTO } from "./dto";
+
 @Injectable()
 export class UserService {
   private _prisma = new PrismaClient();
 
-  async getUser(getUserDTO: GetUserDTO) {
+  async getUser(getUserDTO: GetMeaningDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserDTO;
 
@@ -50,7 +43,7 @@ export class UserService {
             include: {
               departments: {
                 include: {
-                  department: true,
+                  department: true, 
                 },
               },
             },
@@ -70,7 +63,7 @@ export class UserService {
     }
   }
 
-  async getRole(getUserRoleDTO: GetUserRoleDTO) {
+  async getRole(getUserRoleDTO: GetMeaningDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserRoleDTO;
 

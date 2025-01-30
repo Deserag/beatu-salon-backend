@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Кабинеты
+model Cabinet {
+  id         String   @id @default(uuid())
+  number     String
+  status     ECabinetStatus @default(AVAILABLE)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  creatorId  String
+  officeId   String
+
 model Cabinet {
   id        String          @id @default(uuid())
   number    String
@@ -32,21 +43,40 @@ model UserOnCabinet {
 }
 
 model Product {
-  id          String        @id @default(uuid())
+  id          String         @id @default(uuid())
   name        String
+  description String?  
+  volume      Float    @default(0) 
+  unit        String   @default("мл")
   quantity    Int
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  deletedAt   DateTime?
-  description String?
   prices      Int
-  creatorId   String
-  unit        String        @default("мл")
-  volume      Float         @default(0)
-  User        User          @relation(fields: [creatorId], references: [id])
-  ProductSale ProductSale[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+  creatorId   String        
+
+  creator     User           @relation(fields: [creatorId], references: [id]) 
+  sales       ProductSale[]  
 }
 
+
+
+// Продажи товаров
+model ProductSale {
+  id          String   @id @default(uuid())
+  productId   String
+  clientId    String
+  quantity    Int
+  price       Float
+  totalPrice  Float     // цена за всё количество (quantity * price)
+  saleDate    DateTime  @default(now())
+  creatorId   String
+
+  product     Product   @relation(fields: [productId], references: [id])
+  client      Client    @relation(fields: [clientId], references: [id])
+}
+
+// Клиенты
 model Client {
   id              String          @id @default(uuid())
   telegramId      String          @unique
@@ -58,21 +88,21 @@ model Client {
   updatedAt DateTime        @updatedAt
   deletedAt DateTime?
   clientHistories ClientHistory[]
-  ProductSale     ProductSale[]
-  reviews         Review[]
-  serviceRecords  ServiceRecord[]
+  reviews    Review[]
+  productSales    ProductSale[] // Продажи товаров для клиента
 }
 
 model Office {
-  id        String          @id @default(uuid())
-  number    String
-  createdAt DateTime        @default(now())
-  creatorId String
-  deletedAt DateTime?
-  updatedAt DateTime        @updatedAt
-  address   String
-  cabinets  Cabinet[]
-  services  ServiceRecord[]
+  id         String   @id @default(uuid())
+  number     String
+  address    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  creatorId  String
+
+  cabinets   Cabinet[]
+  services   ServiceRecord[]
 }
 
 model Opportunity {
@@ -97,22 +127,39 @@ model Role {
 }
 
 model Service {
-  id              String            @id @default(uuid())
-  name            String
-  description     String?
-  price           Int
-  createdAt       DateTime          @default(now())
-  deletedAt       DateTime?
-  updatedAt       DateTime          @updatedAt
-  creatorId       String
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  price         Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+  creatorId     String
+
+  creator       User     @relation(fields: [creatorId], references: [id]) // Связь с User
+  
+  serviceRecords ServiceRecord[]
+  categories     ServiceCategory[]
+  reviews        Review[]
   clientHistories ClientHistory[]
-  reviews         Review[]
-  User            User              @relation(fields: [creatorId], references: [id])
-  serviceRecords  ServiceRecord[]
-  WorkerOnService WorkerOnService[]
-  categories      ServiceCategory[] @relation("ServiceToServiceCategory")
+   workersOnService WorkerOnService[]
 }
 
+// Список Работников на услуге
+model WorkerOnService {
+  serviceId String
+  userId    String
+  creatorId String
+
+  service   Service @relation(fields: [serviceId], references: [id])
+  worker    User    @relation(fields: [userId], references: [id], name: "WorkerRelation")
+  creator   User    @relation(fields: [creatorId], references: [id], name: "CreatorRelation")
+
+  @@id([serviceId, userId])
+}
+
+
+// Записи услуг
 model ServiceRecord {
   id            String   @id @default(uuid())
   clientId      String
@@ -130,29 +177,32 @@ model ServiceRecord {
 }
 
 model User {
-  id                                              String            @id @default(uuid())
-  lastName                                        String
-  firstName                                       String
-  middleName                                      String?
-  birthDate                                       DateTime
-  createdAt                                       DateTime          @default(now())
-  login                                           String            @unique
-  email                                           String            @unique
-  password                                        String
-  roleId                                          String           // Сделано необязательным
-  telegramId                                      String?           @unique
-  updatedAt                                       DateTime          @updatedAt
-  departments                                     DepartmentUser[]
-  Product                                         Product[]
-  schedules                                       Schedule[]
-  Service                                         Service[]
-  services                                        ServiceRecord[]
-  role                                            Role?             @relation(fields: [roleId], references: [id]) // Сделано необязательным
-  cabinets                                        UserOnCabinet[]
-  WorkerOnService_WorkerOnService_creatorIdToUser WorkerOnService[] @relation("WorkerOnService_creatorIdToUser")
-  WorkerOnService_WorkerOnService_userIdToUser    WorkerOnService[] @relation("WorkerOnService_userIdToUser")
+  id          String   @id @default(uuid())
+  lastName    String
+  firstName   String
+  middleName  String?
+  birthDate   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  login       String   @unique
+  email       String   @unique
+  password    String
+  roleId      String
+  telegramId  String?  @unique
+
+  role        Role     @relation(fields: [roleId], references: [id])
+  workerOnServicesAsWorker WorkerOnService[] @relation(name: "WorkerRelation") 
+  workerOnServicesAsCreator WorkerOnService[] @relation(name: "CreatorRelation") 
+  products    Product[] 
+  schedules   Schedule[]
+  cabinets    UserOnCabinet[]
+  servicesRecord   ServiceRecord[]
+  services    Service[]
+  departments DepartmentUser[]
 }
 
+
+// Отделы
 model Department {
   id          String           @id @default(uuid())
   name        String

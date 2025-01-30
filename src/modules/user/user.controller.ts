@@ -1,21 +1,9 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Post,
-  Put,
-  Param,
-} from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { UserService } from './user.service';
-import { GetUserDTO } from './dto/get-user.dto';
-import { CreateUserDTO, UpdateUserDTO } from './dto';
-import {  GetUserRoleDTO } from './dto/get-role.dto';
-import {
-  GetUserDepartmentDTO,
-} from './dto/get-department.dto';
-import { CreateRoleDTO, CreateDepartmentDTO } from './dto';
+import { Body, Controller, Delete, Get, Param, Post, Put } from "@nestjs/common";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { UserService } from "./user.service";
+import { GetMeaningDTO } from "../dto";
+import { CreateDepartmentDTO, CreateRoleDTO, CreateUserDTO, GetUserDepartmentDTO, UpdateUserDTO } from "./dto";
+
 @ApiTags('user')
 @Controller('user')
 export class UserController {
@@ -54,7 +42,7 @@ export class UserController {
   @ApiOperation({ summary: 'Поиск пользователей с фильтрами' })
   @ApiResponse({ status: 200, description: 'Пользователи успешно найдены' })
   @ApiResponse({ status: 404, description: 'Пользователи не найдены' })
-  async usersList(@Body() getUserDTO: GetUserDTO) {
+  async usersList(@Body() getUserDTO: GetMeaningDTO) {
     return await this._userService.getUser(getUserDTO);
   }
 
@@ -62,7 +50,7 @@ export class UserController {
   @ApiOperation({ summary: 'Поиск роли с фильтрами' })
   @ApiResponse({ status: 200, description: 'Роли успешно найдены' })
   @ApiResponse({ status: 404, description: 'Роли не найдены' })
-  async usersListRoles(@Body() getUserRoleDTO: GetUserRoleDTO) {
+  async usersListRoles(@Body() getUserRoleDTO: GetMeaningDTO) {
     return await this._userService.getRole(getUserRoleDTO);
   }
   @Post('list-departments')
