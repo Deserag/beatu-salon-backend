@@ -8,6 +8,14 @@ export class GetClientOrderDTO {
     example: '034213',
     description: 'телеграм id',
   })
+  telegramid: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    example: '034213',
+    description: ' пользователя id',
+  })
   id: string;
 
   @IsOptional()

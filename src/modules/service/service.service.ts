@@ -30,16 +30,6 @@ export class ServiceService {
   }
   async GetProductForId(id: string) {}
 
-  async GetServiceListUser(serviceId: string) {
-    try {
-      const serviceUsers = await this._prisma.workerOnService.findMany({
-        where: { serviceId },
-      });
-      return serviceUsers;
-    } catch (error) {
-      throw new Error('Ошибка при получении пользователей для услуги: ' + error.message);
-    }
-  }
   
 
   async GetProfuctForSaleForId(id: string) {}
@@ -169,118 +159,7 @@ export class ServiceService {
     }
   }
 
-  //   async CreateProfuctForSale(createProductForSaleDTO: CreateProductForSaleDTO) {
-  //     try {
-  //         const { officeId, productId, quantity, clientId, price, creatorId } = createProductForSaleDTO;
-
-  //         const officeProduct = await this._prisma.productOffice.findUnique({
-  //             where: { officeId_productId: { officeId, productId } },
-  //         });
-
-  //         if (!officeProduct || officeProduct.quantity < quantity) {
-  //             throw new Error('Недостаточно товара на складе офиса');
-  //         }
-
-  //         const totalPrice = quantity * price;
-
-  //         const sale = await this._prisma.productSale.create({
-  //             data: {
-  //                 ...createProductForSaleDTO
-  //             },
-  //         });
-
-  //         await this._prisma.productOffice.update({
-  //             where: { officeId_productId: { officeId, productId } },
-  //             data: { quantity: officeProduct.quantity - quantity },
-  //         });
-
-  //         return sale;
-  //     } catch (error) {
-  //         throw new Error('Ошибка при создании продажи товара: ' + error.message);
-  //     }
-  // }
-
-  // async UpdateProductForSale(updateProductForSaleDTO: UpdateProductForSaleDTO) {
-  //     try {
-  //         const { saleId, quantity, price } = updateProductForSaleDTO;
-
-  //         const sale = await this._prisma.productSale.findUnique({
-  //             where: { id: saleId },
-  //         });
-
-  //         if (!sale) {
-  //             throw new Error('Продажа с указанным ID не найдена');
-  //         }
-
-  //         const officeProduct = await this._prisma.productOffice.findUnique({
-  //             where: { officeId_productId: { officeId: sale.officeId, productId: sale.productId } },
-  //         });
-
-  //         if (!officeProduct || officeProduct.quantity + sale.quantity < quantity) {
-  //             throw new Error('Недостаточно товара для обновления');
-  //         }
-
-  //         const totalPrice = quantity * price;
-
-  //         await this._prisma.productSale.update({
-  //             where: { id: saleId },
-  //             data: { quantity, price, totalPrice },
-  //         });
-
-  //         await this._prisma.productOffice.update({
-  //             where: { officeId_productId: { officeId: sale.officeId, productId: sale.productId } },
-  //             data: { quantity: officeProduct.quantity + sale.quantity - quantity },
-  //         });
-
-  //         return true;
-  //     } catch (error) {
-  //         throw new Error('Ошибка при обновлении продажи товара: ' + error.message);
-  //     }
-  // }
-  async CreateListServiceUser(createServiceUserListDTO: UpdateServiceUserList) {
-    const { serviceId, userId, creatorId } = createServiceUserListDTO;
-
-    try {
-      const service = await this._prisma.service.findUnique({
-        where: { id: serviceId },
-      });
-      if (!service) {
-        throw new Error('Услуга с указанным ID не найдена');
-      }
-      const creator = await this._prisma.user.findUnique({
-        where: { id: creatorId },
-      });
-      if (!creator) {
-        throw new Error('Создатель с указанным ID не найден');
-      }
-      const users = await this._prisma.user.findMany({
-        where: { id: { in: userId } },
-      });
-      if (users.length !== userId.length) {
-        throw new Error('Один или несколько пользователей не найдены');
-      }
-      const workersOnService = userId.map((id) => ({
-        serviceId,
-        userId: id,
-        creatorId,
-      }));
-      const createdWorkers = await this._prisma.$transaction(
-        workersOnService.map((worker) =>
-          this._prisma.workerOnService.create({ data: worker }),
-        ),
-      );
-
-      return {
-        message: 'Пользователи успешно добавлены к услуге',
-        createdWorkers,
-      };
-    } catch (error) {
-      throw new Error(
-        'Ошибка при добавлении пользователей к услуге: ' + error.message,
-      );
-    }
-  }
-
+ 
   async UpdateProduct(updateProductDTO: UpdateProductDTO) {
     try {
       const { productId, name, quantity } = updateProductDTO;

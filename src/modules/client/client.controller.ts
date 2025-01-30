@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateOrderClientDTO, GetClientDTO, UpdateOrderDTO } from './dto';
 import { CreateClientDTO, UpdateClientDTO } from './dto/create-client.dto';
@@ -10,12 +10,21 @@ import { GetMeaningDTO } from '../dto';
 export class ClientController {
   constructor(private readonly _clientService: ClientService) {}
 
-  @ApiTags('/list')
-  @ApiOperation({ summary: 'Получение списка клиентов' })
-  @ApiBody({ type: GetMeaningDTO })
-  async getUser(@Body() getUserDTO: GetClientDTO) {
-    return await this._clientService.getClients(getUserDTO);
+  @Get(':id') 
+  @ApiOperation({ summary: 'Получение клиента по ID' })
+  @ApiResponse({ status: 200, description: 'Клиент успешно найден' })
+  @ApiResponse({ status: 404, description: 'Клиент не найден' })
+  async getClientById(@Param('id') clientId: string) {
+    return await this._clientService.getClientById(clientId);
   }
+
+  @Get(':id/orders') 
+    @ApiOperation({ summary: 'Получение заказов клиента по ID' })
+    @ApiResponse({ status: 200, description: 'Заказы успешно найдены' })
+    @ApiResponse({ status: 404, description: 'Заказы не найдены' })
+    async getClientOrders(@Param('id') clientId: string) {
+        return await this._clientService.getClientOrders(clientId);
+    }
 
   @Post('list')
   @ApiOperation({ summary: 'Поиск клиентов с фильтрами' })
@@ -37,15 +46,15 @@ export class ClientController {
   }
 
   @Post('create-order')
-@ApiOperation({ summary: 'Создание заказа' })
-@ApiResponse({ status: 200, description: 'Заказ успешно создан' })
-@ApiResponse({
-  status: 400,
-  description: 'Недостаточно данных для создания заказа',
-})
-async createOrder(@Body() createOrderDTO: CreateOrderClientDTO) {
-  return await this._clientService.createOrder(createOrderDTO);
-}
+  @ApiOperation({ summary: 'Создание заказа' })
+  @ApiResponse({ status: 200, description: 'Заказ успешно создан' })
+  @ApiResponse({
+    status: 400,
+    description: 'Недостаточно данных для создания заказа',
+  })
+  async createOrder(@Body() createOrderDTO: CreateOrderClientDTO) {
+    return await this._clientService.createOrder(createOrderDTO);
+  }
 
   //Запросы на обновление идут ниже
 
@@ -73,11 +82,4 @@ async createOrder(@Body() createOrderDTO: CreateOrderClientDTO) {
   async updateOrderClient(@Body() updateClientOrder: UpdateOrderDTO) {
     return await this._clientService.updateOrder(updateClientOrder);
   }
-
-  // @ApiTags('/get-orders-client')
-  // @ApiOperation({ summary: 'Получение заказов клиента' })
-  // @ApiBody({ type: GetClientOrderDTO })
-  // async getOrdersClients(@Body() getClientOrderDTO: GetClientOrderDTO) {
-  //   return await this._clientService.getOrdersClients(getClientOrderDTO);
-  // }
 }
