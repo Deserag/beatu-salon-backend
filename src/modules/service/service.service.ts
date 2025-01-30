@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { CreateServiceDTO, GetServiceDTO } from './dto';
 
@@ -23,7 +23,7 @@ export class ServiceService {
           },
         });
         if (!services || services.length == 0) {
-          throw new Error('Сервис с указанным именем не найден');
+          throw new HttpException('Сервис с указанным именем не найден', HttpStatus.BAD_REQUEST);
         }
         return { services };
       } else {
@@ -44,7 +44,7 @@ export class ServiceService {
         };
       }
     } catch (error) {
-      throw new Error('Ошибка получения пользователей' + error.message);
+      throw new HttpException('Ошибка получения пользователей' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -60,7 +60,7 @@ export class ServiceService {
       !createServiceDTO.price ||
       !createServiceDTO.creatorId
     ) {
-      throw new Error('Все поля должны быть заполнены');
+      throw new HttpException('Все поля должны быть заполнены', HttpStatus.BAD_REQUEST);
     }
     try {
       const admin = await this._prisma.user.findUnique({
@@ -69,7 +69,7 @@ export class ServiceService {
         },
       });
       if (!admin) {
-        throw new Error('Администратор с указанным ID не найден');
+        throw new HttpException('Администратор с указанным ID не найден', HttpStatus.BAD_REQUEST);
       }
       const role = await this._prisma.role.findUnique({
         where: {
@@ -87,10 +87,10 @@ export class ServiceService {
       });
       if (role.name != 'Admin' && role.name != 'Manager' && !role) {
         console.log(role.name);
-        throw new Error('Недостаточно прав для создания сервиса');
+        throw new HttpException('Недостаточно прав для создания сервиса', HttpStatus.BAD_REQUEST);
       }
       if (name) {
-        throw new Error('Сервис с таким именем уже существует');
+        throw new HttpException('Сервис с таким именем уже существует', HttpStatus.BAD_REQUEST);
       } else {
         const createdService = await this._prisma.service.create({
           data: {
@@ -100,7 +100,7 @@ export class ServiceService {
         return createdService;
       }
     } catch (error) {
-      throw new Error('Ошибка при создании сервиса: ' + error.message);
+      throw new HttpException('Ошибка при создании сервиса: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

@@ -68,3 +68,13 @@ export class CreateOrderClientDTO {
   })
   result: string;
 }
+
+export class UpdateOrderDTO extends CreateOrderClientDTO {
+  @IsString()
+  @ApiProperty({
+    example: 'uuid-клиента', 
+    description: 'ID клиента',
+    required: true,
+  })
+  orderId: string;
+}

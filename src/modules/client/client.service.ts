@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import {
   CreateClientDTO,
   CreateOrderClientDTO,
   GetClientDTO,
   UpdateClientDTO,
+  UpdateOrderDTO,
 } from './dto';
 
 @Injectable()
@@ -20,12 +21,27 @@ export class ClientService {
         },
       });
 
-      if (!client) throw new Error('Клиент с указанным ID не найден');
+      if (!client) throw new HttpException('Клиент с указанным ID не найден', HttpStatus.BAD_REQUEST);
 
       return client;
     } catch (error) {
-      throw new Error(
-        'Ошибка при получении информации о клиенте: ' + error.message,
+      throw new HttpException('Ошибка при получении информации о клиенте: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getClientOrders(clientId:string){
+    try {
+     const orders = await this._prisma.serviceRecord.findMany({
+       where: {
+        clientId: clientId,
+        result: 'DONE'
+       }
+     })
+     return orders;
+
+    } catch (error) {
+      throw new HttpException(
+        'Ошибка при получении информации о клиенте: ' + error.message,HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -46,7 +62,7 @@ export class ClientService {
         });
 
         if (!clients || clients.length === 0) {
-          throw new Error('Пользователь с указанным именем не найден');
+          throw new HttpException('Пользователь с указанным именем не найден', HttpStatus.BAD_REQUEST);
         }
 
         return { clients };
@@ -68,7 +84,7 @@ export class ClientService {
         };
       }
     } catch (error) {
-      throw new Error('Ошибка при получении пользователей: ' + error.message);
+      throw new HttpException('Ошибка при получении пользователей: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
   private _prisma = new PrismaClient();
@@ -78,7 +94,7 @@ export class ClientService {
       createClientDTO;
 
     if (!telegramId || !firstName || !lastName || !birthDate) {
-      throw new Error('Недостаточно полей для заполнения');
+      throw new HttpException('Недостаточно полей для заполнения', HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -92,7 +108,7 @@ export class ClientService {
         },
       });
     } catch (error) {
-      throw new Error('Ошибка при создании клиента: ' + error.message);
+      throw new HttpException('Ошибка при создании клиента: ' + error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -101,12 +117,12 @@ export class ClientService {
       updateClientDTO;
 
     if (!id || !telegramId || !firstName || !lastName || !birthDate) {
-      throw new Error('Недостаточно полей для заполнения');
+      throw new HttpException('Недостаточно полей для заполнения', HttpStatus.BAD_REQUEST);
     }
 
     try {
       const client = await this._prisma.client.findUnique({ where: { id } });
-      if (!client) throw new Error('Клиент с указанным ID не найден');
+      if (!client) throw new HttpException('Клиент с указанным ID не найден', HttpStatus.BAD_REQUEST);
 
       return await this._prisma.client.update({
         where: { id },
@@ -119,7 +135,7 @@ export class ClientService {
         },
       });
     } catch (error) {
-      throw new Error('Ошибка при обновлении клиента: ' + error.message);
+      throw new HttpException('Ошибка при обновлении клиента: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -130,8 +146,8 @@ export class ClientService {
       !createOrderDTO.dateTime ||
       !createOrderDTO.serviceId
     ) {
-      throw new Error(
-        'Недостаточно данных для создания пользователя. Логин, пароль, имя и фамилия обязательны.',
+      throw new HttpException(
+        'Недостаточно данных для создания пользователя. Логин, пароль, имя и фамилия обязательны.',HttpStatus.BAD_REQUEST
       );
     }
     try {
@@ -153,7 +169,7 @@ export class ClientService {
       });
 
       if (!client || !user || !service) {
-        throw new Error('Клиент или сотрудник или услуга не найдены');
+        throw new HttpException('Клиент или сотрудник или услуга не найдены', HttpStatus.BAD_REQUEST);
       } else {
         return await this._prisma.serviceRecord.create({
           data: {
@@ -162,7 +178,56 @@ export class ClientService {
         });
       }
     } catch (error) {
-      throw new Error('Ошибка при создании пользователя: ' + error.message);
+      throw new HttpException('Ошибка при создании пользователя: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async updateOrder(updateOrderDTO: UpdateOrderDTO){
+    if (
+      !updateOrderDTO.clientId ||
+      !updateOrderDTO.workerId ||
+      !updateOrderDTO.dateTime ||
+      !updateOrderDTO.serviceId||
+      !updateOrderDTO.orderId
+    ) {
+      throw new HttpException(
+        'Недостаточно данных для обновления заказа. ID заказа, ID клиента, ID сотрудника, дату и ID услуги обязательны.',HttpStatus.BAD_REQUEST
+      );
+    }
+    try {
+      const user = await this._prisma.user.findUnique({
+        where: {
+          id: updateOrderDTO.workerId,
+        },
+      });
+      const client = await this._prisma.client.findUnique({
+        where: {
+          id: updateOrderDTO.clientId,
+        },
+      });
+
+      const service = await this._prisma.service.findUnique({
+        where: {
+          id: updateOrderDTO.serviceId,
+        },
+      });
+
+      if (!client || !user || !service) {
+        throw new HttpException('Клиент или сотрудник или услуга не найдены', HttpStatus.BAD_REQUEST);
+      } else {
+        return await this._prisma.serviceRecord.update({
+          where: {
+            id: updateOrderDTO.orderId,
+          },
+          data: {
+            ...updateOrderDTO,
+          },
+        });
+      }
+    } catch (error) {
+      throw new HttpException('Ошибка при обновлении пользователя: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  
 }
