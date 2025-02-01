@@ -1,8 +1,25 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from "@nestjs/common";
-import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { UserService } from "./user.service";
-import { GetMeaningDTO } from "../dto";
-import { CreateDepartmentDTO, CreateRoleDTO, CreateUserDTO, GetUserDepartmentDTO, UpdateUserDTO } from "./dto";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { UserService } from './user.service';
+import { GetMeaningDTO } from '../dto';
+import {
+  CreateDepartmentDTO,
+  CreateRoleDTO,
+  CreateUserDTO,
+  DeleteDepartmentDTO,
+  DeleteRoleDTO,
+  DeleteUserDTO,
+  GetUserDepartmentDTO,
+  UpdateUserDTO,
+} from './dto';
 
 @ApiTags('user')
 @Controller('user')
@@ -105,14 +122,6 @@ export class UserController {
     return await this._userService.updateUserInfo(updateUserDTO);
   }
 
-  @Delete('delete/:id')
-  @ApiOperation({ summary: 'Удаление пользователя' })
-  @ApiResponse({ status: 200, description: 'Пользователь успешно удален' })
-  @ApiResponse({ status: 404, description: 'Пользователь не найден' })
-  async deleteUser(@Param('id') id: string) {
-    return await this._userService.deleteUser(id);
-  }
-
   @Post('assign-cabinet')
   @ApiOperation({ summary: 'Прикрепить пользователя к кабинету' })
   @ApiResponse({
@@ -143,5 +152,29 @@ export class UserController {
     @Body() { userId, cabinetId }: { userId: string; cabinetId: string },
   ) {
     return await this._userService.removeUserFromCabinet(userId, cabinetId);
+  }
+
+  @Delete('delete-role:id')
+  @ApiOperation({ summary: 'Удаление роли' })
+  @ApiResponse({ status: 200, description: 'Роль успешно удалена' })
+  @ApiResponse({ status: 404, description: 'Роль не найдена' })
+  async deleteRole(@Body() deleteRoleDTO: DeleteRoleDTO) {
+    return await this._userService.deleteRole(deleteRoleDTO);
+  }
+
+  @Delete('delete-user:id')
+  @ApiOperation({ summary: 'Удаление пользователя' })
+  @ApiResponse({ status: 200, description: 'Пользователь успешно удален' })
+  @ApiResponse({ status: 404, description: 'Пользователь не найден' })
+  async deleteUser(@Body() deleteUserDTO: DeleteUserDTO) {
+    return await this._userService.deleteUser(deleteUserDTO);
+  }
+
+  @Delete('delete-department:id')
+  @ApiOperation({ summary: 'Удаление отделения' })
+  @ApiResponse({ status: 200, description: 'Отделение успешно удалено' })
+  @ApiResponse({ status: 404, description: 'Отделение не найдено' })
+  async deleteDepartment(@Body() deleteDepartmentDTO: DeleteDepartmentDTO) {
+    return await this._userService.deleteDepartment(deleteDepartmentDTO);
   }
 }
