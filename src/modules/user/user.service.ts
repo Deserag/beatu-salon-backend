@@ -499,7 +499,6 @@ export class UserService {
         name: true,
       },
     });
-    console.log(role);
     return role;
   }
 
@@ -532,7 +531,7 @@ export class UserService {
       const role = await this._prisma.role.findUnique({
         where: { id: user.roleId },
       });
-      if (role.name !== 'ADMIN' && role.name !== 'Manager') {
+      if (role.name == 'ADMIN' || role.name == 'Manager') {
         throw new HttpException(
           'У вас нет прав для удаления ролей',
           HttpStatus.FORBIDDEN,

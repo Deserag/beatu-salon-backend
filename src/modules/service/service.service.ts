@@ -8,8 +8,6 @@ import {
   UpdateServiceDTO,
 } from './dto';
 import { GetMeaningDTO } from '../dto';
-import { error } from 'console';
-import { UpdateServiceUserList } from './dto/update-service-user-list.dto';
 
 @Injectable()
 export class ServiceService {
@@ -70,6 +68,7 @@ export class ServiceService {
         };
       }
     } catch (error) {
+      console.log('Ошибка получения', error);
       throw new HttpException('Ошибка получения пользователей' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

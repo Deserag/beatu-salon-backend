@@ -33,6 +33,6 @@ export class DeleteDepartmentDTO {
 
     @IsNotEmpty()
     @IsUUID()
-    @ApiProperty({ description: 'ID проффессии' })
+    @ApiProperty({ description: 'ID отделения' })
     departmentId: string;
 }

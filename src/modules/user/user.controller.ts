@@ -154,7 +154,7 @@ export class UserController {
     return await this._userService.removeUserFromCabinet(userId, cabinetId);
   }
 
-  @Delete('delete-role:id')
+  @Delete('delete-role')
   @ApiOperation({ summary: 'Удаление роли' })
   @ApiResponse({ status: 200, description: 'Роль успешно удалена' })
   @ApiResponse({ status: 404, description: 'Роль не найдена' })
@@ -162,7 +162,7 @@ export class UserController {
     return await this._userService.deleteRole(deleteRoleDTO);
   }
 
-  @Delete('delete-user:id')
+  @Delete('delete-user')
   @ApiOperation({ summary: 'Удаление пользователя' })
   @ApiResponse({ status: 200, description: 'Пользователь успешно удален' })
   @ApiResponse({ status: 404, description: 'Пользователь не найден' })
@@ -170,7 +170,7 @@ export class UserController {
     return await this._userService.deleteUser(deleteUserDTO);
   }
 
-  @Delete('delete-department:id')
+  @Delete('delete-department')
   @ApiOperation({ summary: 'Удаление отделения' })
   @ApiResponse({ status: 200, description: 'Отделение успешно удалено' })
   @ApiResponse({ status: 404, description: 'Отделение не найдено' })
