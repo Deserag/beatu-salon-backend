@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL") 
 }
 
-model Cabinet {
+model cabinet {
   id        String      @id @default(uuid())
   number    String
   officeId  String
@@ -15,23 +15,23 @@ model Cabinet {
   creatorId String
   deletedAt DateTime?
   updatedAt DateTime    @updatedAt
-  status    ECabinetStatus @default(AVAILABLE)
-  office    Office      @relation(fields: [officeId], references: [id])
-  schedules Schedule[]
-  services  ServiceRecord[]
-  users     UserOnCabinet[]
+  status    eCabinetStatus @default(AVAILABLE)
+  office    office      @relation(fields: [officeId], references: [id])
+  schedules schedule[]
+  services  serviceRecord[]
+  users     userOnCabinet[]
 }
 
-model UserOnCabinet {
+model userOnCabinet {
   cabinetId String
   userId    String
-  cabinet   Cabinet @relation(fields: [cabinetId], references: [id])
-  user      User    @relation(fields: [userId], references: [id])
+  cabinet   cabinet @relation(fields: [cabinetId], references: [id])
+  user      user    @relation(fields: [userId], references: [id])
 
   @@id([cabinetId, userId])
 }
 
-model Product {
+model product {
   id          String    @id @default(uuid())
   name        String
   description String?
@@ -44,11 +44,11 @@ model Product {
   deletedAt   DateTime?
   creatorId   String
 
-  creator     User      @relation(fields: [creatorId], references: [id])
-  sales       ProductSale[]
+  creator     user      @relation(fields: [creatorId], references: [id])
+  sales       productSale[]
 }
 
-model ProductSale {
+model productSale {
   id        String  @id @default(uuid())
   productId String
   clientId  String
@@ -58,11 +58,11 @@ model ProductSale {
   saleDate  DateTime @default(now())
   creatorId String
 
-  product   Product @relation(fields: [productId], references: [id])
-  client    Client  @relation(fields: [clientId], references: [id])
+  product   product @relation(fields: [productId], references: [id])
+  client    client  @relation(fields: [clientId], references: [id])
 }
 
-model Client {
+model client {
   id            String    @id @default(uuid())
   telegramId    String    @unique
   firstName     String
@@ -72,13 +72,13 @@ model Client {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
-  clientHistories ClientHistory[]
-  reviews       Review[]
-  productSales  ProductSale[]
-  serviceRecords ServiceRecord[]
+  clientHistories clientHistory[]
+  reviews       review[]
+  productSales  productSale[]
+  serviceRecords serviceRecord[]
 }
 
-model Office {
+model office {
   id        String    @id @default(uuid())
   number    String
   address   String
@@ -87,32 +87,32 @@ model Office {
   deletedAt DateTime?
   creatorId String
 
-  cabinets  Cabinet[]
-  services  ServiceRecord[]
+  cabinets  cabinet[]
+  services  serviceRecord[]
 }
 
-model Opportunity {
+model opportunity {
   id   String @id @default(uuid())
   name String
 }
 
-model Position {
+model position {
   id          String    @id @default(uuid())
   name        String
   description String?
 }
 
-model Role {
+model role {
   id          String    @id @default(uuid())
   name        String
   createdAt   DateTime  @default(now())
   deletedAt   DateTime?
   updatedAt   DateTime  @updatedAt
   description String    @default("Default Description")
-  users       User[]
+  users       user[]
 }
 
-model Service {
+model service {
   id          String    @id @default(uuid())
   name        String
   description String?
@@ -123,26 +123,26 @@ model Service {
   deletedAt   DateTime?
   creatorId   String
 
-  serviceRecords ServiceRecord[]
-  categories    ServiceCategory[] @relation("ServiceToServiceCategory")
-  reviews       Review[]
-  clientHistories ClientHistory[]
-  workersOnService WorkerOnService[]
+  serviceRecords serviceRecord[]
+  categories    serviceCategory[] @relation("serviceToServiceCategory")
+  reviews       review[]
+  clientHistories clientHistory[]
+  workersOnService workerOnService[]
 }
 
-model WorkerOnService {
+model workerOnService {
   serviceId String
   userId    String
   creatorId String
 
-  service   Service @relation(fields: [serviceId], references: [id])
-  worker    User    @relation(name: "WorkerRelation", fields: [userId], references: [id])
-  creator   User    @relation(name: "CreatorRelation", fields: [creatorId], references: [id])
+  service   service @relation(fields: [serviceId], references: [id])
+  worker    user    @relation(name: "workerRelation", fields: [userId], references: [id])
+  creator   user    @relation(name: "creatorRelation", fields: [creatorId], references: [id])
 
   @@id([serviceId, userId])
 }
 
-model ServiceRecord {
+model serviceRecord {
   id            String    @id @default(uuid())
   clientId      String
   workerId      String
@@ -151,14 +151,17 @@ model ServiceRecord {
   officeId      String
   workCabinetId String
   result        String?
-  client        Client  @relation(fields: [clientId], references: [id])
-  office        Office  @relation(fields: [officeId], references: [id])
-  service       Service @relation(fields: [serviceId], references: [id])
-  cabinet       Cabinet @relation(fields: [workCabinetId], references: [id])
-  worker        User    @relation(fields: [workerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  client        client  @relation(fields: [clientId], references: [id])
+  office        office  @relation(fields: [officeId], references: [id])
+  service       service @relation(fields: [serviceId], references: [id])
+  cabinet       cabinet @relation(fields: [workCabinetId], references: [id])
+  worker        user    @relation(fields: [workerId], references: [id])
 }
 
-model User {
+model user {
   id        String    @id @default(uuid())
   lastName  String
   firstName String
@@ -172,88 +175,88 @@ model User {
   roleId    String
   telegramId String?  @unique
 
-  role        Role        @relation(fields: [roleId], references: [id])
-  workerOnServicesAsWorker WorkerOnService[] @relation(name: "WorkerRelation")
-  workerOnServicesAsCreator WorkerOnService[] @relation(name: "CreatorRelation")
-  products    Product[]
-  schedules   Schedule[]
-  cabinets    UserOnCabinet[]
-  serviceRecords ServiceRecord[]
-  departments DepartmentUser[]
+  role        role        @relation(fields: [roleId], references: [id])
+  workerOnServicesAsWorker workerOnService[] @relation(name: "workerRelation")
+  workerOnServicesAsCreator workerOnService[] @relation(name: "creatorRelation")
+  products    product[]
+  schedules   schedule[]
+  cabinets    userOnCabinet[]
+  serviceRecords serviceRecord[]
+  departments departmentUser[]
 }
 
-model Department {
+model department {
   id          String    @id @default(uuid())
   name        String
   description String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
-  users       DepartmentUser[]
+  users       departmentUser[]
 }
 
-model DepartmentUser {
+model departmentUser {
   userId      String
   departmentId String
-  department  Department @relation(fields: [departmentId], references: [id])
-  user        User        @relation(fields: [userId], references: [id])
+  department  department @relation(fields: [departmentId], references: [id])
+  user        user        @relation(fields: [userId], references: [id])
 
   @@id([userId, departmentId])
 }
 
-model Schedule {
+model schedule {
   id        String    @id @default(uuid())
   date      DateTime
   startTime DateTime
   endTime   DateTime
   userId    String
   cabinetId String
-  cabinet   Cabinet   @relation(fields: [cabinetId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  cabinet   cabinet   @relation(fields: [cabinetId], references: [id])
+  user      user      @relation(fields: [userId], references: [id])
 }
 
-model ServiceCategory {
+model serviceCategory {
   id          String    @id @default(uuid())
   name        String
   description String?
-  services    Service[] @relation("ServiceToServiceCategory")
+  services    service[] @relation("serviceToServiceCategory")
 }
 
-model ClientHistory {
+model clientHistory {
   id          String    @id @default(uuid())
   clientId    String
   serviceId   String
   date        DateTime
   feedbackId  String?
-  client      Client    @relation(fields: [clientId], references: [id])
-  feedback    Review?   @relation(fields: [feedbackId], references: [id])
-  service     Service   @relation(fields: [serviceId], references: [id])
+  client      client    @relation(fields: [clientId], references: [id])
+  feedback    review?   @relation(fields: [feedbackId], references: [id])
+  service     service   @relation(fields: [serviceId], references: [id])
 }
 
-model Review {
+model review {
   id          String    @id @default(uuid())
   serviceId   String
   clientId    String
   comment     String?
-  grade       EGrade
-  clientHistories ClientHistory[]
-  client      Client    @relation(fields: [clientId], references: [id])
-  service     Service   @relation(fields: [serviceId], references: [id])
+  grade       eGrade
+  clientHistories clientHistory[]
+  client      client    @relation(fields: [clientId], references: [id])
+  service     service   @relation(fields: [serviceId], references: [id])
 }
 
-enum EStatusRecord {
+enum eStatusRecord {
   CANCELED
   DONE
   PROBLEMS
 }
 
-enum ECabinetStatus {
+enum eCabinetStatus {
   AVAILABLE
   OCCUPIED
   UNDER_MAINTENANCE
 }
 
-enum EGrade {
+enum eGrade {
   VERY_BAD
   BAD
   OK

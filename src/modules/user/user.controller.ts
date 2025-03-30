@@ -32,6 +32,31 @@ export class UserController {
   async getUserRoles() {
     return await this._userService.getUserRoles();
   }
+  @Get('user-departaments')
+  @ApiOperation({ summary: 'Получение проффесий' })
+  @ApiResponse({ status: 200, description: 'Проффесии успешно получены' })
+  @ApiResponse({ status: 404, description: 'Проффесии не найдены' })
+  async getDepartments() {
+    return await this._userService.getDepartments();
+  }
+  
+
+  @Get('users-department')
+  @ApiOperation({ summary: 'Получение пользователей' })
+  @ApiResponse({ status: 200, description: 'Пользователи успешно получены' })
+  @ApiResponse({ status: 404, description: 'Пользователи не найдены' })
+  async getDepartmentUsers(@Param('departmentId') departmentId: string) {
+    return await this._userService.getDepartmentUsers(departmentId);
+  }
+
+  @Get('users-earnings')
+  @ApiOperation({ summary: 'Получение прибыли работника' })
+  @ApiResponse({ status: 200, description: 'Прибыль работника успешно получены' })
+  @ApiResponse({ status: 404, description: 'Прибыль не найдена' })
+  async getUserEarnings(@Param('userId') userId: string) {
+    return await this._userService.getUserEarnings(userId);
+  }
+
   @Get('users-department/:departmentId')
   @ApiOperation({ summary: 'Получение пользователей по ID проффесии' })
   @ApiResponse({ status: 200, description: 'Пользователи успешно получены' })
@@ -40,7 +65,7 @@ export class UserController {
     return await this._userService.getUsersWithDepartment(departmentId);
   }
 
-  @Get('user-departaments')
+  @Get('departaments')
   @ApiOperation({ summary: 'Получение направления' })
   @ApiResponse({ status: 200, description: 'Направления успешно получены' })
   @ApiResponse({ status: 404, description: 'Направления не найдены' })

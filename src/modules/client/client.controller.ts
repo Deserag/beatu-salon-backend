@@ -69,12 +69,6 @@ export class ClientController {
     return await this._clientService.updateClient(updateClientDTO);
   }
 
-  @ApiTags('/create-order')
-  @ApiOperation({ summary: 'Создание заказа' })
-  @ApiBody({ type: CreateClientDTO })
-  async createOrderClient(@Body() createClientOrder: CreateOrderClientDTO) {
-    return await this._clientService.createOrder(createClientOrder);
-  }
 
   @ApiTags('/update-order')
   @ApiOperation({ summary: 'Обновление заказа' })

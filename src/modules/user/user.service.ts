@@ -14,10 +14,114 @@ import {
   UpdateUserDTO,
 } from './dto';
 import { parseISO } from 'date-fns';
+import { retry } from 'rxjs';
 @Injectable()
 export class UserService {
   private _prisma = new PrismaClient();
+  async getUserRoles() {
+    const role = await this._prisma.role.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    return role;
+  }
 
+  async getDepartments() {
+    const departments = await this._prisma.department.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    return departments;
+  }
+
+  async getUserInfo(userId: string) {
+    // запрос для страницы пользователя со всей информацией по нему
+    try {
+      const user = await this._prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      const userRole = await this._prisma.role.findUnique({
+        where: { id: user.roleId },
+        select: { name: true },
+      });
+      return { user, userRole };
+    } catch (error) {
+      throw new HttpException(
+        'Ошибка при получении пользователя:' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getUserEarnings(userId: string) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const tomorrow = new Date();
+      tomorrow.setDate(today.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+
+      const earnings = await this._prisma.serviceRecord.findMany({
+        where: {
+          workerId: userId,
+          dateTime: {
+            gte: today,
+            lt: tomorrow,
+          },
+          result: 'done',
+        },
+        include: {
+          service: true,
+        },
+      });
+
+      let totalEarnings = 0;
+      let totalOrdersPrice = 0;
+
+      for (const record of earnings) {
+        if (record.service) {
+          totalEarnings += record.service.price;
+          totalOrdersPrice += record.service.price;
+        }
+      }
+
+      return {
+        earnings: earnings,
+        totalEarnings: totalEarnings,
+        totalOrdersPrice: totalOrdersPrice,
+      };
+    } catch (error) {
+      throw new HttpException(
+        'Ошибка при получении данных о заработке: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  async getDepartmentUsers(departmentId: string) {
+    //запрос для получения пользователей с однимм направлением
+    try {
+      const users = await this._prisma.departmentUser.findMany({
+        where: {
+          departmentId,
+        },
+        include: {
+          user: true,
+        },
+      });
+      return users;
+    } catch (error) {
+      throw new HttpException(
+        'Ошибка при получении отделов: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
   async getUser(getUserDTO: GetMeaningDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserDTO;
@@ -170,7 +274,7 @@ export class UserService {
 
   async getUserDepartament() {
     try {
-      const departments = await this._prisma.department.findMany();
+      const departments = await this._prisma.departmentUser.findMany();
       return departments;
     } catch (error) {
       throw new HttpException(
@@ -256,6 +360,21 @@ export class UserService {
         }
       }
 
+      if (createUserDTO.departments) {
+        for (const departmentId of createUserDTO.departments) {
+          const department = await this._prisma.department.findUnique({
+            where: { id: departmentId },
+          });
+
+          if (!department) {
+            throw new HttpException(
+              'Отдел с указанным ID не найден',
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+        }
+      }
+
       const data: any = {
         ...createUserDTO,
       };
@@ -273,18 +392,26 @@ export class UserService {
         data.birthDate = parseISO(createUserDTO.birthDate);
       }
 
-      if (createUserDTO.departments && createUserDTO.departments.length > 0) {
-        data.departments = {
-          connect: createUserDTO.departments.map((departmentId) => ({
-            id: departmentId,
-          })),
-        };
-      }
-      delete data.departments;
-
       const createdUser = await this._prisma.user.create({
         data,
       });
+
+      if (createUserDTO.departments && createUserDTO.departments.length > 0) {
+        try {
+          await this._prisma.departmentUser.createMany({
+            data: createUserDTO.departments.map((departmentId) => ({
+              userId: createdUser.id,
+              departmentId: departmentId,
+            })),
+          });
+        } catch (error) {
+          await this._prisma.user.delete({ where: { id: createdUser.id } });
+          throw new HttpException(
+            'Ошибка при добавлении пользователя в отделы: ' + error.message,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+      }
 
       return createdUser;
     } catch (error) {
@@ -307,7 +434,9 @@ export class UserService {
     try {
       const user = await this._prisma.user.findUnique({
         where: { id: userDTO.id },
+        include: { departments: true },
       });
+
       if (!user) {
         throw new HttpException(
           'Пользователь с указанным ID не найден',
@@ -317,19 +446,46 @@ export class UserService {
 
       const { departments, ...userData } = userDTO;
 
+      const data: any = {
+        ...userData,
+      };
+
+      if (userDTO.birthDate) {
+        data.birthDate = parseISO(userDTO.birthDate);
+      }
+
+      if (departments) {
+        const currentDepartmentIds = user.departments.map(
+          (dep) => dep.departmentId,
+        );
+        const departmentsToAdd = departments.filter(
+          (id) => !currentDepartmentIds.includes(id),
+        );
+        const departmentsToRemove = currentDepartmentIds.filter(
+          (id) => !departments.includes(id),
+        );
+
+        // Обновляем связи через DepartmentUser
+        await this._prisma.$transaction([
+          this._prisma.departmentUser.deleteMany({
+            where: {
+              userId: userDTO.id,
+              departmentId: { in: departmentsToRemove },
+            },
+          }),
+          this._prisma.departmentUser.createMany({
+            data: departmentsToAdd.map((departmentId) => ({
+              userId: userDTO.id,
+              departmentId: departmentId,
+            })),
+          }),
+        ]);
+      }
+
       const updatedUser = await this._prisma.user.update({
         where: { id: userDTO.id },
-        data: {
-          ...userData,
-          departments: departments
-            ? {
-                deleteMany: {},
-                create: departments.map((departmentId) => ({
-                  departmentId,
-                })),
-              }
-            : undefined,
-        },
+        data,
+        include: { departments: true },
       });
 
       return updatedUser;
@@ -340,7 +496,6 @@ export class UserService {
       );
     }
   }
-
   async createRole(createRoleDTO: CreateRoleDTO) {
     if (!createRoleDTO.name) {
       throw new HttpException(
@@ -487,35 +642,6 @@ export class UserService {
     } catch (error) {
       throw new HttpException(
         'Ошибка при создании роли:' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  async getUserRoles() {
-    const role = await this._prisma.role.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-    });
-    return role;
-  }
-
-  async getUserInfo(userId: string) {
-    try {
-      const user = await this._prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      const userRole = await this._prisma.role.findUnique({
-        where: { id: user.roleId },
-        select: { name: true },
-      });
-      return { user, userRole };
-    } catch (error) {
-      throw new HttpException(
-        'Ошибка при получении пользователя:' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
