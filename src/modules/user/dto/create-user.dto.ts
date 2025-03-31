@@ -8,6 +8,7 @@ import {
   Matches,
   IsOptional,
   IsDateString,
+  ArrayMinSize,
 } from 'class-validator';
 
 export class CreateUserDTO {
@@ -35,8 +36,9 @@ export class CreateUserDTO {
   birthDate: string;
 
   @IsNotEmpty()
-  @IsString()
-  @ApiProperty({ example: 'Отдел продаж', required: true })
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  @ApiProperty({ example: ['f053ca2c-35e9-44f3-8955-183082948707'], required: true })
   departments: string[];
 
   @IsNotEmpty()
@@ -58,7 +60,7 @@ export class CreateUserDTO {
   @ApiProperty({ example: 'employee123', required: true })
   login: string;
 
-  @IsOptional() 
+  @IsOptional()
   @IsUUID()
   @ApiProperty({ example: 'uuid-роль', required: false })
   roleId?: string;
@@ -77,7 +79,6 @@ export class CreateUserDTO {
   })
   telegramId: string;
 }
-
 
 export class UpdateUserDTO extends CreateUserDTO {
   @IsNotEmpty()

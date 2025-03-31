@@ -376,42 +376,38 @@ export class UserService {
       }
 
       const data: any = {
-        ...createUserDTO,
+        lastName: createUserDTO.lastName,
+        firstName: createUserDTO.firstName,
+        middleName: createUserDTO.middleName,
+        login: createUserDTO.login,
+        email: createUserDTO.email,
+        password: createUserDTO.password,
+        telegramId: createUserDTO.telegramId,
       };
 
       if (createUserDTO.roleId) {
         data.role = {
           connect: { id: createUserDTO.roleId },
         };
-        delete data.roleId;
       }
-
-      delete data.id;
 
       if (createUserDTO.birthDate) {
         data.birthDate = parseISO(createUserDTO.birthDate);
       }
 
       const createdUser = await this._prisma.user.create({
-        data,
-      });
-
-      if (createUserDTO.departments && createUserDTO.departments.length > 0) {
-        try {
-          await this._prisma.departmentUser.createMany({
-            data: createUserDTO.departments.map((departmentId) => ({
-              userId: createdUser.id,
+        data: {
+          ...data,
+          departments: {
+            create: createUserDTO.departments.map((departmentId) => ({
               departmentId: departmentId,
             })),
-          });
-        } catch (error) {
-          await this._prisma.user.delete({ where: { id: createdUser.id } });
-          throw new HttpException(
-            'Ошибка при добавлении пользователя в отделы: ' + error.message,
-            HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }
-      }
+          },
+        },
+        include: {
+          departments: true,
+        },
+      });
 
       return createdUser;
     } catch (error) {
