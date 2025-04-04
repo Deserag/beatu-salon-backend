@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Product" ADD COLUMN     "unit" TEXT NOT NULL DEFAULT 'мл',
-ADD COLUMN     "volume" DOUBLE PRECISION NOT NULL DEFAULT 0;
