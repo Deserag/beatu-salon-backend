@@ -1,4 +1,9 @@
-import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import {
   CreateProductDTO,
@@ -8,11 +13,16 @@ import {
   UpdateServiceDTO,
 } from './dto';
 import { GetMeaningDTO } from '../dto';
-import { CreateWorkerOnServiceDTO, UpdateWorkerOnServiceDTO } from './dto/create-workers-service.dto';
-
+import {
+  CreateWorkerOnServiceDTO,
+  UpdateWorkerOnServiceDTO,
+} from './dto/create-workers-service.dto';
+import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client'; 
 @Injectable()
 export class ServiceService {
   private _prisma = new PrismaClient();
+  private readonly logger = new Logger(ServiceService.name);
   async GetServiceForId(id: string) {
     try {
       const service = await this._prisma.service.findUnique({
@@ -29,24 +39,43 @@ export class ServiceService {
   }
   async GetProductForId(id: string) {}
 
-  async  getAllWorkerOnService(getServiceDTO: GetMeaningDTO) {
+  async getAllWorkerOnService(getServiceDTO: GetMeaningDTO) {
     try {
+      const whereCondition = getServiceDTO.name ? { serviceId: getServiceDTO.name } : {};
+      
+      const pagination = {
+        skip: getServiceDTO.page && getServiceDTO.size 
+          ? (getServiceDTO.page - 1) * getServiceDTO.size 
+          : undefined,
+        take: getServiceDTO.size ? getServiceDTO.size : undefined
+      };
+
       const workersOnService = await this._prisma.workerOnService.findMany({
-        where: {
-          serviceId: getServiceDTO.name,
-        },
-        include: {
-          worker: true,
-        },
-        skip: (getServiceDTO.page - 1) * getServiceDTO.size,
-        take: getServiceDTO.size,
+        where: whereCondition,
+        include: { worker: true },
+        ...pagination
       });
+
+      if (!workersOnService.length) {
+        throw new HttpException(
+          getServiceDTO.name 
+            ? 'Мастера для указанной услуги не найдены' 
+            : 'Мастера не найдены',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
       return workersOnService;
     } catch (error) {
-      console.error("Ошибка при получении мастеров для услуги:", error);
-      throw error;
-    } finally {
-      await this._prisma.$disconnect();
+      if (error instanceof HttpException) throw error;
+      
+      this.logger.error(`Ошибка при получении мастеров: ${error.message}`, error.stack);
+      throw new HttpException(
+        error instanceof Prisma.PrismaClientKnownRequestError // Теперь Prisma доступен
+          ? 'Некорректные параметры запроса'
+          : 'Произошла ошибка при получении мастеров',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
   async getWorkerOnServiceByIds(serviceId: string, userId: string) {
@@ -67,7 +96,6 @@ export class ServiceService {
       throw new Error(`Ошибка при получении связи: ${error.message}`);
     }
   }
-
 
   async GetProfuctForSaleForId(id: string) {}
 
@@ -108,7 +136,10 @@ export class ServiceService {
       }
     } catch (error) {
       console.log('Ошибка получения', error);
-      throw new HttpException('Ошибка получения пользователей' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Ошибка получения пользователей' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -206,7 +237,11 @@ export class ServiceService {
         include: { role: true },
       });
 
-      if (!creatorRole || (creatorRole.role.name !== 'Admin' && creatorRole.role.name !== 'SuperAdmin')) {
+      if (
+        !creatorRole ||
+        (creatorRole.role.name !== 'Admin' &&
+          creatorRole.role.name !== 'SuperAdmin')
+      ) {
         throw new ForbiddenException('Недостаточно прав');
       }
 
@@ -215,9 +250,11 @@ export class ServiceService {
         include: { role: true },
       });
 
-      workers.forEach(worker => {
-        if (!worker || (worker.role.name !== 'Worker')) {
-          throw new ForbiddenException('Недостаточно прав у одного из мастеров');
+      workers.forEach((worker) => {
+        if (!worker || worker.role.name !== 'Worker') {
+          throw new ForbiddenException(
+            'Недостаточно прав у одного из мастеров',
+          );
         }
       });
 
@@ -240,7 +277,6 @@ export class ServiceService {
     }
   }
 
- 
   async UpdateProduct(updateProductDTO: UpdateProductDTO) {
     try {
       const { productId, name, quantity } = updateProductDTO;
@@ -292,7 +328,11 @@ export class ServiceService {
         include: { role: true },
       });
 
-      if (!creatorRole || (creatorRole.role.name !== 'Admin' && creatorRole.role.name !== 'SuperAdmin')) {
+      if (
+        !creatorRole ||
+        (creatorRole.role.name !== 'Admin' &&
+          creatorRole.role.name !== 'SuperAdmin')
+      ) {
         throw new ForbiddenException('Недостаточно прав');
       }
 
@@ -368,32 +408,31 @@ export class ServiceService {
   }
 }
 
-  // async DeleteProductForSale(saleId: string) {
-  //     try {
-  //         const sale = await this._prisma.productSale.findUnique({
-  //             where: { id: saleId },
-  //         });
+// async DeleteProductForSale(saleId: string) {
+//     try {
+//         const sale = await this._prisma.productSale.findUnique({
+//             where: { id: saleId },
+//         });
 
-  //         if (!sale) {
-  //             throw new Error('Продажа с указанным ID не найдена');
-  //         }
+//         if (!sale) {
+//             throw new Error('Продажа с указанным ID не найдена');
+//         }
 
-  //         const officeProduct = await this._prisma.productOffice.findUnique({
-  //             where: { officeId_productId: { officeId: sale.officeId, productId: sale.productId } },
-  //         });
+//         const officeProduct = await this._prisma.productOffice.findUnique({
+//             where: { officeId_productId: { officeId: sale.officeId, productId: sale.productId } },
+//         });
 
-  //         if (officeProduct) {
-  //             await this._prisma.productOffice.update({
-  //                 where: { officeId_productId: { officeId: sale.officeId, productId: sale.productId } },
-  //                 data: { quantity: officeProduct.quantity + sale.quantity },
-  //             });
-  //         }
+//         if (officeProduct) {
+//             await this._prisma.productOffice.update({
+//                 where: { officeId_productId: { officeId: sale.officeId, productId: sale.productId } },
+//                 data: { quantity: officeProduct.quantity + sale.quantity },
+//             });
+//         }
 
-  //         return await this._prisma.productSale.delete({
-  //             where: { id: saleId },
-  //         });
-  //     } catch (error) {
-  //         throw new Error('Ошибка при удалении продажи товара: ' + error.message);
-  //     }
-  // }
-
+//         return await this._prisma.productSale.delete({
+//             where: { id: saleId },
+//         });
+//     } catch (error) {
+//         throw new Error('Ошибка при удалении продажи товара: ' + error.message);
+//     }
+// }
