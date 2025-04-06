@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import {
   CreateProductDTO,
@@ -8,6 +8,7 @@ import {
   UpdateServiceDTO,
 } from './dto';
 import { GetMeaningDTO } from '../dto';
+import { CreateWorkerOnServiceDTO, UpdateWorkerOnServiceDTO } from './dto/create-workers-service.dto';
 
 @Injectable()
 export class ServiceService {
@@ -28,7 +29,45 @@ export class ServiceService {
   }
   async GetProductForId(id: string) {}
 
-  
+  async  getAllWorkerOnService(getServiceDTO: GetMeaningDTO) {
+    try {
+      const workersOnService = await this._prisma.workerOnService.findMany({
+        where: {
+          serviceId: getServiceDTO.name,
+        },
+        include: {
+          worker: true,
+        },
+        skip: (getServiceDTO.page - 1) * getServiceDTO.size,
+        take: getServiceDTO.size,
+      });
+      return workersOnService;
+    } catch (error) {
+      console.error("Ошибка при получении мастеров для услуги:", error);
+      throw error;
+    } finally {
+      await this._prisma.$disconnect();
+    }
+  }
+  async getWorkerOnServiceByIds(serviceId: string, userId: string) {
+    try {
+      return this._prisma.workerOnService.findUnique({
+        where: {
+          serviceId_userId: {
+            serviceId,
+            userId,
+          },
+        },
+        include: {
+          worker: true,
+          service: true,
+        },
+      });
+    } catch (error) {
+      throw new Error(`Ошибка при получении связи: ${error.message}`);
+    }
+  }
+
 
   async GetProfuctForSaleForId(id: string) {}
 
@@ -158,6 +197,49 @@ export class ServiceService {
     }
   }
 
+  async createWorkerOnService(dto: CreateWorkerOnServiceDTO) {
+    const { serviceId, userIds, creatorId } = dto;
+
+    try {
+      const creatorRole = await this._prisma.user.findUnique({
+        where: { id: creatorId },
+        include: { role: true },
+      });
+
+      if (!creatorRole || (creatorRole.role.name !== 'Admin' && creatorRole.role.name !== 'SuperAdmin')) {
+        throw new ForbiddenException('Недостаточно прав');
+      }
+
+      const workers = await this._prisma.user.findMany({
+        where: { id: { in: userIds } },
+        include: { role: true },
+      });
+
+      workers.forEach(worker => {
+        if (!worker || (worker.role.name !== 'Worker')) {
+          throw new ForbiddenException('Недостаточно прав у одного из мастеров');
+        }
+      });
+
+      const createOperations = userIds.map((userId) =>
+        this._prisma.workerOnService.create({
+          data: {
+            serviceId,
+            userId,
+            creatorId,
+          },
+        }),
+      );
+
+      return this._prisma.$transaction(createOperations);
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new Error(`Ошибка при создании связей: ${error.message}`);
+    }
+  }
+
  
   async UpdateProduct(updateProductDTO: UpdateProductDTO) {
     try {
@@ -201,6 +283,42 @@ export class ServiceService {
     }
   }
 
+  async updateWorkerOnService(dto: UpdateWorkerOnServiceDTO) {
+    const { serviceId, userIds, creatorId } = dto;
+
+    try {
+      const creatorRole = await this._prisma.user.findUnique({
+        where: { id: creatorId },
+        include: { role: true },
+      });
+
+      if (!creatorRole || (creatorRole.role.name !== 'Admin' && creatorRole.role.name !== 'SuperAdmin')) {
+        throw new ForbiddenException('Недостаточно прав');
+      }
+
+      await this._prisma.workerOnService.deleteMany({
+        where: { serviceId },
+      });
+
+      const createOperations = userIds.map((userId) =>
+        this._prisma.workerOnService.create({
+          data: {
+            serviceId,
+            userId,
+            creatorId,
+          },
+        }),
+      );
+
+      return this._prisma.$transaction(createOperations);
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new Error(`Ошибка при обновлении связей: ${error.message}`);
+    }
+  }
+
   async DeleteService(serviceId: string) {
     try {
       const service = await this._prisma.service.findUnique({
@@ -238,6 +356,17 @@ export class ServiceService {
       throw new Error('Ошибка при удалении товара: ' + error.message);
     }
   }
+  async deleteWorkerOnService(serviceId: string, userId: string) {
+    return this._prisma.workerOnService.delete({
+      where: {
+        serviceId_userId: {
+          serviceId,
+          userId,
+        },
+      },
+    });
+  }
+}
 
   // async DeleteProductForSale(saleId: string) {
   //     try {
@@ -267,4 +396,4 @@ export class ServiceService {
   //         throw new Error('Ошибка при удалении продажи товара: ' + error.message);
   //     }
   // }
-}
+

@@ -78,6 +78,7 @@ export class CreateUserDTO {
     description: 'Telegram ID пользователя',
   })
   telegramId: string;
+
 }
 
 export class UpdateUserDTO extends CreateUserDTO {
