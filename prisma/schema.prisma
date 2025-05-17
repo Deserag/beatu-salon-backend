@@ -49,34 +49,21 @@ model product {
 }
 
 model productSale {
-  id        String  @id @default(uuid())
-  productId String
-  clientId  String
-  quantity  Int
-  price     Float
+  id         String   @id @default(uuid())
+  productId  String
+  userId     String   
+  quantity   Int
+  price      Float
   totalPrice Float
-  saleDate  DateTime @default(now())
-  creatorId String
+  saleDate   DateTime @default(now())
+  creatorId  String
 
-  product   product @relation(fields: [productId], references: [id])
-  client    client  @relation(fields: [clientId], references: [id])
+  product    product  @relation(fields: [productId], references: [id])
+  user       user     @relation(name: "UserSales", fields: [userId], references: [id]) // ← Изменено
 }
 
-model client {
-  id            String    @id @default(uuid())
-  telegramId    String    @unique
-  firstName     String
-  lastName      String
-  middleName    String?
-  birthDate     DateTime
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-  clientHistories clientHistory[]
-  reviews       review[]
-  productSales  productSale[]
-  serviceRecords serviceRecord[]
-}
+
+
 
 model office {
   id        String    @id @default(uuid())
@@ -144,22 +131,25 @@ model workerOnService {
 
 model serviceRecord {
   id            String    @id @default(uuid())
-  clientId      String
+  userId        String    
   workerId      String
   dateTime      DateTime
   serviceId     String
   officeId      String
   workCabinetId String
   result        String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  client        client  @relation(fields: [clientId], references: [id])
-  office        office  @relation(fields: [officeId], references: [id])
-  service       service @relation(fields: [serviceId], references: [id])
-  cabinet       cabinet @relation(fields: [workCabinetId], references: [id])
-  worker        user    @relation(fields: [workerId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  user          user      @relation(name: "ClientRelation", fields: [userId], references: [id])
+  worker        user      @relation(name: "WorkerRelation", fields: [workerId], references: [id])
+  office        office    @relation(fields: [officeId], references: [id])
+  service       service   @relation(fields: [serviceId], references: [id])
+  cabinet       cabinet   @relation(fields: [workCabinetId], references: [id])
 }
+
+
 
 model user {
   id        String    @id @default(uuid())
@@ -174,6 +164,7 @@ model user {
   password  String
   roleId    String
   telegramId String?  @unique
+  deletedAt DateTime?     
 
   role        role        @relation(fields: [roleId], references: [id])
   workerOnServicesAsWorker workerOnService[] @relation(name: "workerRelation")
@@ -181,9 +172,15 @@ model user {
   products    product[]
   schedules   schedule[]
   cabinets    userOnCabinet[]
-  serviceRecords serviceRecord[]
   departments departmentUser[]
+
+  reviews       review[]                @relation("UserReviews")
+  productSales  productSale[]           @relation("UserSales")
+  clientHistories clientHistory[]       @relation("UserHistories")
+  serviceRecordsAsClient serviceRecord[] @relation(name: "ClientRelation")
+  serviceRecordsAsWorker serviceRecord[] @relation(name: "WorkerRelation")
 }
+
 
 model department {
   id          String    @id @default(uuid())
@@ -224,23 +221,26 @@ model serviceCategory {
 
 model clientHistory {
   id          String    @id @default(uuid())
-  clientId    String
+  userId      String   
   serviceId   String
   date        DateTime
   feedbackId  String?
-  client      client    @relation(fields: [clientId], references: [id])
+
+  user        user      @relation(name: "UserHistories", fields: [userId], references: [id])
   feedback    review?   @relation(fields: [feedbackId], references: [id])
   service     service   @relation(fields: [serviceId], references: [id])
 }
 
+
 model review {
   id          String    @id @default(uuid())
   serviceId   String
-  clientId    String
+  userId      String    
   comment     String?
   grade       eGrade
   clientHistories clientHistory[]
-  client      client    @relation(fields: [clientId], references: [id])
+
+  user        user      @relation(name: "UserReviews", fields: [userId], references: [id])
   service     service   @relation(fields: [serviceId], references: [id])
 }
 

@@ -10,6 +10,7 @@ import {
 
 @Injectable()
 export class ClientService {
+  private _prisma = new PrismaClient();
   async getClientById(clientId: string) {
     try {
       const client = await this._prisma.client.findUnique({
@@ -55,15 +56,24 @@ export class ClientService {
   async getClients(getClientDTO: GetClientDTO) {
     try {
       const { name, page = 1, size = 10 } = getClientDTO;
+      const userRole = await this._prisma.role.findFirst({
+        where: {
+          name: 'User',
+        },
+        select: {
+          id: true,
+        },
+      });
 
       if (name) {
-        const clients = await this._prisma.client.findMany({
+        const clients = await this._prisma.user.findMany({
           where: {
             OR: [
               { firstName: { contains: name, mode: 'insensitive' } },
               { lastName: { contains: name, mode: 'insensitive' } },
               { middleName: { contains: name, mode: 'insensitive' } },
             ],
+            AND: [{ roleId: userRole.id }],
           },
         });
 
@@ -77,12 +87,17 @@ export class ClientService {
         return { clients };
       } else {
         const [rows, totalCount] = await this._prisma.$transaction([
-          this._prisma.client.findMany({
+          this._prisma.user.findMany({
+            where: {
+              role: {
+                id: userRole.id,
+              },
+            },
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
           }),
-          this._prisma.client.count(),
+          this._prisma.user.count(),
         ]);
 
         return {
@@ -99,7 +114,6 @@ export class ClientService {
       );
     }
   }
-  private _prisma = new PrismaClient();
 
   async createClient(createClientDTO: CreateClientDTO) {
     const { telegramId, firstName, lastName, middleName, birthDate } =
@@ -195,19 +209,19 @@ export class ClientService {
         );
       }
 
-      const serviceDuration = service.duration; 
+      const serviceDuration = service.duration;
 
       const orderStartTime = new Date(dateTime);
       const orderEndTime = new Date(
         orderStartTime.getTime() + serviceDuration * 60 * 60 * 1000,
-      ); 
+      );
       const conflictingOrder = await this._prisma.serviceRecord.findFirst({
         where: {
           workerId: workerId,
           OR: [
             {
               dateTime: {
-                lte: orderEndTime, 
+                lte: orderEndTime,
               },
             },
             {
