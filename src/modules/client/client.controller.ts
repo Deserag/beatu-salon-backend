@@ -3,7 +3,6 @@ import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateOrderClientDTO, GetClientDTO, UpdateOrderDTO } from './dto';
 import { CreateClientDTO, UpdateClientDTO } from './dto/create-client.dto';
 import { ClientService } from './client.service';
-import { GetMeaningDTO } from '../dto';
 
 @ApiTags('client')
 @Controller('client')

@@ -25,3 +25,9 @@ export class UpdateOfficeDTO extends CreateOfficeDTO {
     @ApiProperty({example: 'id офиса', required: true})
     id: string;
 }
+
+export interface DeleteOfficeDTO {
+    creatorId: string;
+    id: string;
+
+}
