@@ -1,1 +1,5 @@
 export * from './create-office.dto'
+export * from './create-cabinet.dto'
+export * from './get-cabinet.dto'
+export * from './get-office.dto'
+export * from './get-statistic-office.dto'

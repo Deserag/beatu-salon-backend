@@ -14,10 +14,11 @@ import {
   CreateDepartmentDTO,
   CreateRoleDTO,
   CreateUserDTO,
-  DeleteDepartmentDTO,
+  DeleteDepartmentDto,
   DeleteRoleDTO,
   DeleteUserDTO,
   GetUserDepartmentDTO,
+  UpdateDepartmentDTO,
   UpdateUserDTO,
 } from './dto';
 
@@ -146,6 +147,15 @@ export class UserController {
   async updateUser(@Body() updateUserDTO: UpdateUserDTO) {
     return await this._userService.updateUserInfo(updateUserDTO);
   }
+  @Put('update-department')
+  @ApiOperation({ summary: 'Обновление информации об отделе' })
+  @ApiResponse({ status: 200, description: 'Информация об отделе успешно обновлена' })
+  @ApiResponse({ status: 400, description: 'Недостаточно данных для обновления' })
+  @ApiResponse({ status: 404, description: 'Отдел с указанным ID не найден' })
+  @ApiResponse({ status: 409, description: 'Отдел с таким названием уже существует' })
+  async updateDepartment(@Body() updateDepartmentDTO: UpdateDepartmentDTO) {
+    return this._userService.updateDepartmentInfo(updateDepartmentDTO);
+  }
 
   @Post('assign-cabinet')
   @ApiOperation({ summary: 'Прикрепить пользователя к кабинету' })
@@ -195,11 +205,14 @@ export class UserController {
     return await this._userService.deleteUser(deleteUserDTO);
   }
 
-  @Delete('delete-department')
+  @Delete('delete-department/:departmentId')
   @ApiOperation({ summary: 'Удаление отделения' })
   @ApiResponse({ status: 200, description: 'Отделение успешно удалено' })
   @ApiResponse({ status: 404, description: 'Отделение не найдено' })
-  async deleteDepartment(@Body() deleteDepartmentDTO: DeleteDepartmentDTO) {
-    return await this._userService.deleteDepartment(deleteDepartmentDTO);
+  async deleteDepartment(
+    @Param('departmentId') departmentId: string,
+    @Body() deleteDepartmentDto: DeleteDepartmentDto,
+  ) {
+    return await this._userService.deleteDepartment(deleteDepartmentDto, departmentId);
   }
 }

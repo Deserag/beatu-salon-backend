@@ -5,11 +5,12 @@ import {
   CreateDepartmentDTO,
   CreateRoleDTO,
   CreateUserDTO,
-  DeleteDepartmentDTO,
+  DeleteDepartmentDto,
   DeleteRoleDTO,
   DeleteUserDTO,
   GetUserDepartmentDTO,
   PutRoleDTO,
+  UpdateDepartmentDTO,
   UpdateRoleDTO,
   UpdateUserDTO,
 } from './dto';
@@ -39,7 +40,6 @@ export class UserService {
   }
 
   async getUserInfo(userId: string) {
-    // запрос для страницы пользователя со всей информацией по нему
     try {
       const user = await this._prisma.user.findUnique({
         where: { id: userId },
@@ -104,7 +104,6 @@ export class UserService {
     }
   }
   async getDepartmentUsers(departmentId: string) {
-    //запрос для получения пользователей с однимм направлением
     try {
       const users = await this._prisma.departmentUser.findMany({
         where: {
@@ -124,11 +123,22 @@ export class UserService {
   }
   async getUser(getUserDTO: GetMeaningDTO) {
     try {
+      const role = await this._prisma.role.findFirst({
+        where: {
+          name: 'User',
+        },
+        select: {
+          id: true,
+        },
+      });
       const { name, page = 1, size = 10 } = getUserDTO;
 
       if (name) {
         const users = await this._prisma.user.findMany({
           where: {
+            roleId: {
+              not: role.id,
+            },
             OR: [
               { firstName: { contains: name, mode: 'insensitive' } },
               { lastName: { contains: name, mode: 'insensitive' } },
@@ -155,6 +165,11 @@ export class UserService {
       } else {
         const [rows, totalCount] = await this._prisma.$transaction([
           this._prisma.user.findMany({
+            where: {
+              roleId: {
+                not: role.id,
+              },
+            },
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
@@ -231,10 +246,12 @@ export class UserService {
   async getDepartment(getUserDepartmentDTO: GetUserDepartmentDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserDepartmentDTO;
+      const whereCondition = { deletedAt: null };
 
       if (name) {
         const departments = await this._prisma.department.findMany({
           where: {
+            ...whereCondition,
             name: { contains: name, mode: 'insensitive' },
           },
         });
@@ -246,22 +263,25 @@ export class UserService {
           );
         }
 
-        return { departments };
+        return { rows: departments };
       } else {
         const [rows, totalCount] = await this._prisma.$transaction([
           this._prisma.department.findMany({
+            where: whereCondition,
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
           }),
-          this._prisma.department.count(),
+          this._prisma.department.count({ where: whereCondition }),
         ]);
 
         return {
           rows,
-          totalCount,
-          totalPages: Math.ceil(totalCount / size),
-          currentPage: page,
+          infoPage: {
+            totalCount,
+            totalPages: Math.ceil(totalCount / size),
+            currentPage: page,
+          },
         };
       }
     } catch (error) {
@@ -460,8 +480,6 @@ export class UserService {
         const departmentsToRemove = currentDepartmentIds.filter(
           (id) => !departments.includes(id),
         );
-
-        // Обновляем связи через DepartmentUser
         await this._prisma.$transaction([
           this._prisma.departmentUser.deleteMany({
             where: {
@@ -569,7 +587,60 @@ export class UserService {
     }
   }
 
-  async updateDepartmentInfo() {}
+  async updateDepartmentInfo(updateDepartmentDTO: UpdateDepartmentDTO) {
+    if (!updateDepartmentDTO.departmentId) {
+      throw new HttpException(
+        'Не указан ID отдела для обновления',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (!updateDepartmentDTO.name && !updateDepartmentDTO.description) {
+      throw new HttpException(
+        'Недостаточно полей для обновления отдела',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    try {
+      const department = await this._prisma.department.findUnique({
+        where: { id: updateDepartmentDTO.departmentId, deletedAt: null },
+      });
+      if (!department) {
+        throw new HttpException(
+          `Отдел с ID "${updateDepartmentDTO.departmentId}" не найден`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (
+        updateDepartmentDTO.name &&
+        updateDepartmentDTO.name !== department.name
+      ) {
+        const existingDepartment = await this._prisma.department.findFirst({
+          where: { name: updateDepartmentDTO.name, deletedAt: null },
+        });
+        if (existingDepartment) {
+          throw new HttpException(
+            `Отдел с названием "${updateDepartmentDTO.name}" уже существует`,
+            HttpStatus.CONFLICT,
+          );
+        }
+      }
+      return await this._prisma.department.update({
+        where: { id: updateDepartmentDTO.departmentId },
+        data: {
+          name: updateDepartmentDTO.name,
+          description: updateDepartmentDTO.description,
+        },
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Ошибка при обновлении отдела: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   async assignUserToCabinet(userId: string, cabinetId: string) {
     try {
@@ -703,29 +774,47 @@ export class UserService {
     }
   }
 
-  async deleteDepartment(deleteDepartmentDTO: DeleteDepartmentDTO) {
+  async deleteDepartment(
+    deleteDepartmentDto: DeleteDepartmentDto,
+    departmentId: string,
+  ) {
     try {
       const user = await this._prisma.user.findUnique({
-        where: { id: deleteDepartmentDTO.adminId },
+        where: { id: deleteDepartmentDto.adminId },
         select: { roleId: true },
       });
+
+      if (!user) {
+        throw new HttpException('Админ не найден', HttpStatus.NOT_FOUND);
+      }
 
       const role = await this._prisma.role.findUnique({
         where: { id: user.roleId },
       });
-      if (role.name !== 'ADMIN' && role.name !== 'Manager') {
+
+      if (!role || (role.name !== 'Admin' && role.name !== 'SuperAdmin')) {
         throw new HttpException(
           'У вас нет прав для удаления отделов',
           HttpStatus.FORBIDDEN,
         );
       }
-      const deletedDepartment = await this._prisma.department.delete({
-        where: {
-          id: deleteDepartmentDTO.departmentId,
-        },
+
+      const department = await this._prisma.department.findUnique({
+        where: { id: departmentId },
       });
-      return deletedDepartment;
+
+      if (!department || department.deletedAt !== null) {
+        throw new HttpException('Отделение не найдено', HttpStatus.NOT_FOUND);
+      }
+
+      return await this._prisma.department.update({
+        where: { id: departmentId },
+        data: { deletedAt: new Date() },
+      });
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Ошибка при удалении отдела:' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,

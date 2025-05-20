@@ -10,9 +10,10 @@ import {
 
 @Injectable()
 export class ClientService {
+  private _prisma = new PrismaClient();
   async getClientById(clientId: string) {
     try {
-      const client = await this._prisma.client.findUnique({
+      const client = await this._prisma.user.findUnique({
         where: { id: clientId },
         include: {
           clientHistories: true,
@@ -39,7 +40,7 @@ export class ClientService {
     try {
       const orders = await this._prisma.serviceRecord.findMany({
         where: {
-          clientId: clientId,
+          userId: clientId,
           result: 'DONE',
         },
       });
@@ -55,15 +56,24 @@ export class ClientService {
   async getClients(getClientDTO: GetClientDTO) {
     try {
       const { name, page = 1, size = 10 } = getClientDTO;
+      const userRole = await this._prisma.role.findFirst({
+        where: {
+          name: 'User',
+        },
+        select: {
+          id: true,
+        },
+      });
 
       if (name) {
-        const clients = await this._prisma.client.findMany({
+        const clients = await this._prisma.user.findMany({
           where: {
             OR: [
               { firstName: { contains: name, mode: 'insensitive' } },
               { lastName: { contains: name, mode: 'insensitive' } },
               { middleName: { contains: name, mode: 'insensitive' } },
             ],
+            AND: [{ roleId: userRole.id }],
           },
         });
 
@@ -77,12 +87,17 @@ export class ClientService {
         return { clients };
       } else {
         const [rows, totalCount] = await this._prisma.$transaction([
-          this._prisma.client.findMany({
+          this._prisma.user.findMany({
+            where: {
+              role: {
+                id: userRole.id,
+              },
+            },
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
           }),
-          this._prisma.client.count(),
+          this._prisma.user.count(),
         ]);
 
         return {
@@ -99,7 +114,6 @@ export class ClientService {
       );
     }
   }
-  private _prisma = new PrismaClient();
 
   async createClient(createClientDTO: CreateClientDTO) {
     const { telegramId, firstName, lastName, middleName, birthDate } =
@@ -111,14 +125,26 @@ export class ClientService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const role = await this._prisma.role.findFirst({
+      where: {
+        name: 'User',
+      },
+      select: {
+        id: true,
+      },
+    });
 
     try {
-      return await this._prisma.client.create({
+      return await this._prisma.user.create({
         data: {
           telegramId,
           firstName,
           lastName,
           middleName,
+          login: '',
+          password: '',
+          email: '',
+          roleId: role.id,
           birthDate: new Date(birthDate),
         },
       });
@@ -142,14 +168,14 @@ export class ClientService {
     }
 
     try {
-      const client = await this._prisma.client.findUnique({ where: { id } });
+      const client = await this._prisma.user.findUnique({ where: { id } });
       if (!client)
         throw new HttpException(
           'Клиент с указанным ID не найден',
           HttpStatus.BAD_REQUEST,
         );
 
-      return await this._prisma.client.update({
+      return await this._prisma.user.update({
         where: { id },
         data: {
           telegramId,
@@ -181,7 +207,7 @@ export class ClientService {
       const user = await this._prisma.user.findUnique({
         where: { id: workerId },
       });
-      const client = await this._prisma.client.findUnique({
+      const client = await this._prisma.user.findUnique({
         where: { id: clientId },
       });
       const service = await this._prisma.service.findUnique({
@@ -195,24 +221,24 @@ export class ClientService {
         );
       }
 
-      const serviceDuration = service.duration; 
+      const serviceDuration = service.duration;
 
       const orderStartTime = new Date(dateTime);
       const orderEndTime = new Date(
         orderStartTime.getTime() + serviceDuration * 60 * 60 * 1000,
-      ); 
+      );
       const conflictingOrder = await this._prisma.serviceRecord.findFirst({
         where: {
           workerId: workerId,
           OR: [
             {
               dateTime: {
-                lte: orderEndTime, 
+                lte: orderEndTime,
               },
             },
             {
               dateTime: {
-                gte: orderStartTime, // Начало существующего заказа позже начала нового
+                gte: orderStartTime,
               },
             },
           ],
@@ -227,7 +253,25 @@ export class ClientService {
       }
 
       return await this._prisma.serviceRecord.create({
-        data: { ...createOrderDTO, dateTime: orderStartTime },
+        data: {
+          dateTime: orderStartTime,
+          result: createOrderDTO.result,
+          office: {
+            connect: { id: createOrderDTO.officeId },
+          },
+          cabinet: {
+            connect: { id: createOrderDTO.workCabinetId },
+          },
+          service: {
+            connect: { id: createOrderDTO.serviceId },
+          },
+          user: {
+            connect: { id: createOrderDTO.clientId },
+          },
+          worker: {
+            connect: { id: createOrderDTO.workerId },
+          },
+        },
       });
     } catch (error) {
       if (error instanceof HttpException) {
@@ -260,7 +304,7 @@ export class ClientService {
           id: updateOrderDTO.workerId,
         },
       });
-      const client = await this._prisma.client.findUnique({
+      const client = await this._prisma.user.findUnique({
         where: {
           id: updateOrderDTO.clientId,
         },

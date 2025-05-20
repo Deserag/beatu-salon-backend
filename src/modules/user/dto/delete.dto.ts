@@ -25,14 +25,9 @@ export class DeleteUserDTO {
     userId: string;
 }
 
-export class DeleteDepartmentDTO {
-    @IsNotEmpty()
-    @IsUUID()
-    @ApiProperty({ description: 'ID админа' })
-    adminId: string;
-
-    @IsNotEmpty()
-    @IsUUID()
-    @ApiProperty({ description: 'ID отделения' })
-    departmentId: string;
+export class DeleteDepartmentDto {
+  @IsNotEmpty()
+  @IsUUID()
+  @ApiProperty({ description: 'ID админа' })
+  adminId: string;
 }
