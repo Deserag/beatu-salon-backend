@@ -13,7 +13,7 @@ export class ClientService {
   private _prisma = new PrismaClient();
   async getClientById(clientId: string) {
     try {
-      const client = await this._prisma.client.findUnique({
+      const client = await this._prisma.user.findUnique({
         where: { id: clientId },
         include: {
           clientHistories: true,
@@ -40,7 +40,7 @@ export class ClientService {
     try {
       const orders = await this._prisma.serviceRecord.findMany({
         where: {
-          clientId: clientId,
+          userId: clientId,
           result: 'DONE',
         },
       });
@@ -125,14 +125,26 @@ export class ClientService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const role = await this._prisma.role.findFirst({
+      where: {
+        name: 'User',
+      },
+      select: {
+        id: true,
+      },
+    });
 
     try {
-      return await this._prisma.client.create({
+      return await this._prisma.user.create({
         data: {
           telegramId,
           firstName,
           lastName,
           middleName,
+          login: '',
+          password: '',
+          email: '',
+          roleId: role.id,
           birthDate: new Date(birthDate),
         },
       });
@@ -156,14 +168,14 @@ export class ClientService {
     }
 
     try {
-      const client = await this._prisma.client.findUnique({ where: { id } });
+      const client = await this._prisma.user.findUnique({ where: { id } });
       if (!client)
         throw new HttpException(
           'Клиент с указанным ID не найден',
           HttpStatus.BAD_REQUEST,
         );
 
-      return await this._prisma.client.update({
+      return await this._prisma.user.update({
         where: { id },
         data: {
           telegramId,
@@ -195,7 +207,7 @@ export class ClientService {
       const user = await this._prisma.user.findUnique({
         where: { id: workerId },
       });
-      const client = await this._prisma.client.findUnique({
+      const client = await this._prisma.user.findUnique({
         where: { id: clientId },
       });
       const service = await this._prisma.service.findUnique({
@@ -226,7 +238,7 @@ export class ClientService {
             },
             {
               dateTime: {
-                gte: orderStartTime, // Начало существующего заказа позже начала нового
+                gte: orderStartTime,
               },
             },
           ],
@@ -241,7 +253,25 @@ export class ClientService {
       }
 
       return await this._prisma.serviceRecord.create({
-        data: { ...createOrderDTO, dateTime: orderStartTime },
+        data: {
+          dateTime: orderStartTime,
+          result: createOrderDTO.result,
+          office: {
+            connect: { id: createOrderDTO.officeId },
+          },
+          cabinet: {
+            connect: { id: createOrderDTO.workCabinetId },
+          },
+          service: {
+            connect: { id: createOrderDTO.serviceId },
+          },
+          user: {
+            connect: { id: createOrderDTO.clientId },
+          },
+          worker: {
+            connect: { id: createOrderDTO.workerId },
+          },
+        },
       });
     } catch (error) {
       if (error instanceof HttpException) {
@@ -274,7 +304,7 @@ export class ClientService {
           id: updateOrderDTO.workerId,
         },
       });
-      const client = await this._prisma.client.findUnique({
+      const client = await this._prisma.user.findUnique({
         where: {
           id: updateOrderDTO.clientId,
         },

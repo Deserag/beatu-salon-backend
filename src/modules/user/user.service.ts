@@ -40,7 +40,6 @@ export class UserService {
   }
 
   async getUserInfo(userId: string) {
-    // запрос для страницы пользователя со всей информацией по нему
     try {
       const user = await this._prisma.user.findUnique({
         where: { id: userId },
@@ -105,7 +104,6 @@ export class UserService {
     }
   }
   async getDepartmentUsers(departmentId: string) {
-    //запрос для получения пользователей с однимм направлением
     try {
       const users = await this._prisma.departmentUser.findMany({
         where: {
@@ -125,11 +123,22 @@ export class UserService {
   }
   async getUser(getUserDTO: GetMeaningDTO) {
     try {
+      const role = await this._prisma.role.findFirst({
+        where: {
+          name: 'User',
+        },
+        select: {
+          id: true,
+        },
+      });
       const { name, page = 1, size = 10 } = getUserDTO;
 
       if (name) {
         const users = await this._prisma.user.findMany({
           where: {
+            roleId: {
+              not: role.id,
+            },
             OR: [
               { firstName: { contains: name, mode: 'insensitive' } },
               { lastName: { contains: name, mode: 'insensitive' } },
@@ -156,6 +165,11 @@ export class UserService {
       } else {
         const [rows, totalCount] = await this._prisma.$transaction([
           this._prisma.user.findMany({
+            where: {
+              roleId: {
+                not: role.id,
+              },
+            },
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
@@ -229,7 +243,7 @@ export class UserService {
     }
   }
 
-async getDepartment(getUserDepartmentDTO: GetUserDepartmentDTO) {
+  async getDepartment(getUserDepartmentDTO: GetUserDepartmentDTO) {
     try {
       const { name, page = 1, size = 10 } = getUserDepartmentDTO;
       const whereCondition = { deletedAt: null };
@@ -596,7 +610,10 @@ async getDepartment(getUserDepartmentDTO: GetUserDepartmentDTO) {
           HttpStatus.NOT_FOUND,
         );
       }
-      if (updateDepartmentDTO.name && updateDepartmentDTO.name !== department.name) {
+      if (
+        updateDepartmentDTO.name &&
+        updateDepartmentDTO.name !== department.name
+      ) {
         const existingDepartment = await this._prisma.department.findFirst({
           where: { name: updateDepartmentDTO.name, deletedAt: null },
         });
@@ -757,7 +774,10 @@ async getDepartment(getUserDepartmentDTO: GetUserDepartmentDTO) {
     }
   }
 
-async deleteDepartment(deleteDepartmentDto: DeleteDepartmentDto, departmentId: string) {
+  async deleteDepartment(
+    deleteDepartmentDto: DeleteDepartmentDto,
+    departmentId: string,
+  ) {
     try {
       const user = await this._prisma.user.findUnique({
         where: { id: deleteDepartmentDto.adminId },
