@@ -7,10 +7,12 @@ import {
   UpdateClientDTO,
   UpdateOrderDTO,
 } from './dto';
+import { GetOrderDTO } from './dto/get-order.dto';
 
 @Injectable()
 export class ClientService {
   private _prisma = new PrismaClient();
+
   async getClientById(clientId: string) {
     try {
       const client = await this._prisma.user.findUnique({
@@ -42,6 +44,7 @@ export class ClientService {
         where: {
           userId: clientId,
           result: 'DONE',
+          deletedAt: null,
         },
       });
       return orders;
@@ -65,6 +68,13 @@ export class ClientService {
         },
       });
 
+      if (!userRole) {
+        throw new HttpException(
+          'Роль "User" не найдена в системе.',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
       if (name) {
         const clients = await this._prisma.user.findMany({
           where: {
@@ -74,6 +84,7 @@ export class ClientService {
               { middleName: { contains: name, mode: 'insensitive' } },
             ],
             AND: [{ roleId: userRole.id }],
+            deletedAt: null,
           },
         });
 
@@ -92,24 +103,129 @@ export class ClientService {
               role: {
                 id: userRole.id,
               },
+              deletedAt: null,
             },
             skip: (page - 1) * size,
             take: size,
             orderBy: { createdAt: 'desc' },
           }),
-          this._prisma.user.count(),
+          this._prisma.user.count({
+            where: {
+              role: { id: userRole.id },
+              deletedAt: null,
+            },
+          }),
         ]);
 
         return {
           rows,
-          totalCount,
-          totalPages: Math.ceil(totalCount / size),
-          currentPage: page,
+          infoPage: {
+            totalCount,
+            totalPages: Math.ceil(totalCount / size),
+            currentPage: page,
+            pageSize: size,
+          },
         };
       }
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Ошибка при получении пользователей: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getOrders(getOrder: GetOrderDTO) {
+    try {
+      const { name, page = 1, size = 10 } = getOrder;
+
+      if (name) {
+        const users = await this._prisma.user.findMany({
+          where: {
+            OR: [
+              { firstName: { contains: name, mode: 'insensitive' } },
+              { lastName: { contains: name, mode: 'insensitive' } },
+              { middleName: { contains: name, mode: 'insensitive' } },
+            ],
+            deletedAt: null,
+          },
+          select: { id: true },
+        });
+
+        if (!users || users.length === 0) {
+          throw new HttpException(
+            'Пользователь с указанным именем не найден, поэтому заказы не могут быть отфильтрованы.',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const userIds = users.map((user) => user.id);
+
+        const orders = await this._prisma.serviceRecord.findMany({
+          where: {
+            userId: { in: userIds },
+            deletedAt: null,
+          },
+          include: {
+            user: true,
+            worker: true,
+            service: true,
+            office: true,
+            cabinet: true,
+          },
+        });
+
+        if (!orders || orders.length === 0) {
+          throw new HttpException(
+            'Заказы для пользователя с указанным именем не найдены',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        return { orders };
+      } else {
+        const [rows, totalCount] = await this._prisma.$transaction([
+          this._prisma.serviceRecord.findMany({
+            where: {
+              deletedAt: null,
+            },
+            skip: (page - 1) * size,
+            take: size,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              user: true,
+              worker: true,
+              service: true,
+              office: true,
+              cabinet: true,
+            },
+          }),
+          this._prisma.serviceRecord.count({
+            where: {
+              deletedAt: null,
+            },
+          }),
+        ]);
+
+        return {
+          rows,
+          infoPage: {
+            totalCount,
+            totalPages: Math.ceil(totalCount / size),
+            currentPage: page,
+            pageSize: size,
+          },
+        };
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Ошибка при получении заказов: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -133,6 +249,13 @@ export class ClientService {
         id: true,
       },
     });
+
+    if (!role) {
+      throw new HttpException(
+        'Роль "User" не найдена в системе.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
     try {
       return await this._prisma.user.create({
@@ -175,6 +298,13 @@ export class ClientService {
           HttpStatus.BAD_REQUEST,
         );
 
+      if (client.deletedAt) {
+        throw new HttpException(
+          'Невозможно обновить: клиент удален',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       return await this._prisma.user.update({
         where: { id },
         data: {
@@ -186,6 +316,9 @@ export class ClientService {
         },
       });
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Ошибка при обновлении клиента: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -205,13 +338,13 @@ export class ClientService {
 
     try {
       const user = await this._prisma.user.findUnique({
-        where: { id: workerId },
+        where: { id: workerId, deletedAt: null },
       });
       const client = await this._prisma.user.findUnique({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
       });
       const service = await this._prisma.service.findUnique({
-        where: { id: serviceId },
+        where: { id: serviceId, deletedAt: null },
       });
 
       if (!client || !user || !service) {
@@ -230,10 +363,11 @@ export class ClientService {
       const conflictingOrder = await this._prisma.serviceRecord.findFirst({
         where: {
           workerId: workerId,
-          OR: [
+          deletedAt: null,
+          AND: [
             {
               dateTime: {
-                lte: orderEndTime,
+                lt: orderEndTime,
               },
             },
             {
@@ -299,41 +433,163 @@ export class ClientService {
       );
     }
     try {
+      const orderToUpdate = await this._prisma.serviceRecord.findUnique({
+        where: { id: updateOrderDTO.orderId },
+      });
+
+      if (!orderToUpdate) {
+        throw new HttpException(
+          'Обновляемый заказ не найден',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (orderToUpdate.deletedAt) {
+        throw new HttpException(
+          'Невозможно обновить: заказ удален',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const user = await this._prisma.user.findUnique({
-        where: {
-          id: updateOrderDTO.workerId,
-        },
+        where: { id: updateOrderDTO.workerId, deletedAt: null },
       });
       const client = await this._prisma.user.findUnique({
-        where: {
-          id: updateOrderDTO.clientId,
-        },
+        where: { id: updateOrderDTO.clientId, deletedAt: null },
       });
 
       const service = await this._prisma.service.findUnique({
-        where: {
-          id: updateOrderDTO.serviceId,
-        },
+        where: { id: updateOrderDTO.serviceId, deletedAt: null },
       });
 
       if (!client || !user || !service) {
         throw new HttpException(
-          'Клиент или сотрудник или услуга не найдены',
+          'Клиент или сотрудник или услуга не найдены',
           HttpStatus.BAD_REQUEST,
         );
-      } else {
-        return await this._prisma.serviceRecord.update({
-          where: {
-            id: updateOrderDTO.orderId,
-          },
-          data: {
-            ...updateOrderDTO,
-          },
-        });
       }
+
+      const serviceDuration = service.duration;
+      const orderStartTime = new Date(updateOrderDTO.dateTime);
+      const orderEndTime = new Date(
+        orderStartTime.getTime() + serviceDuration * 60 * 60 * 1000,
+      );
+
+      const conflictingOrder = await this._prisma.serviceRecord.findFirst({
+        where: {
+          workerId: updateOrderDTO.workerId,
+          deletedAt: null,
+          id: { not: updateOrderDTO.orderId },
+          AND: [
+            {
+              dateTime: {
+                lt: orderEndTime,
+              },
+            },
+            {
+              dateTime: {
+                gte: orderStartTime,
+              },
+            },
+          ],
+        },
+      });
+
+      if (conflictingOrder) {
+        throw new HttpException(
+          'У мастера уже есть другой заказ в это время. Пожалуйста, выберите другое время.',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      return await this._prisma.serviceRecord.update({
+        where: {
+          id: updateOrderDTO.orderId,
+        },
+        data: {
+          dateTime: new Date(updateOrderDTO.dateTime),
+          result: updateOrderDTO.result,
+          officeId: updateOrderDTO.officeId,
+          workCabinetId: updateOrderDTO.workCabinetId,
+          serviceId: updateOrderDTO.serviceId,
+          userId: updateOrderDTO.clientId,
+          workerId: updateOrderDTO.workerId,
+        },
+      });
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
-        'Ошибка при обновлении пользователя: ' + error.message,
+        'Ошибка при обновлении заказа: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async deleteOrderSoftly(orderId: string) {
+    try {
+      const order = await this._prisma.serviceRecord.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order) {
+        throw new HttpException(
+          'Заказ с указанным ID не найден',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (order.deletedAt) {
+        throw new HttpException('Заказ уже удален', HttpStatus.BAD_REQUEST);
+      }
+
+      return await this._prisma.serviceRecord.update({
+        where: { id: orderId },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Ошибка при мягком удалении заказа: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async deleteClientSoftly(clientId: string) {
+    try {
+      const client = await this._prisma.user.findUnique({
+        where: { id: clientId },
+      });
+
+      if (!client) {
+        throw new HttpException(
+          'Клиент с указанным ID не найден',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (client.deletedAt) {
+        throw new HttpException('Клиент уже удален', HttpStatus.BAD_REQUEST);
+      }
+
+      return await this._prisma.user.update({
+        where: { id: clientId },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Ошибка при мягком удалении клиента: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

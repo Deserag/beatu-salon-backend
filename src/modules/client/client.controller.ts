@@ -1,15 +1,16 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Delete } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateOrderClientDTO, GetClientDTO, UpdateOrderDTO } from './dto';
 import { CreateClientDTO, UpdateClientDTO } from './dto/create-client.dto';
 import { ClientService } from './client.service';
+import { GetOrderDTO } from './dto/get-order.dto';
 
 @ApiTags('client')
 @Controller('client')
 export class ClientController {
   constructor(private readonly _clientService: ClientService) {}
 
-  @Get(':id') 
+  @Get(':id')
   @ApiOperation({ summary: 'Получение клиента по ID' })
   @ApiResponse({ status: 200, description: 'Клиент успешно найден' })
   @ApiResponse({ status: 404, description: 'Клиент не найден' })
@@ -17,13 +18,13 @@ export class ClientController {
     return await this._clientService.getClientById(clientId);
   }
 
-  @Get(':id/orders') 
-    @ApiOperation({ summary: 'Получение заказов клиента по ID' })
-    @ApiResponse({ status: 200, description: 'Заказы успешно найдены' })
-    @ApiResponse({ status: 404, description: 'Заказы не найдены' })
-    async getClientOrders(@Param('id') clientId: string) {
-        return await this._clientService.getClientOrders(clientId);
-    }
+  @Get(':id/orders')
+  @ApiOperation({ summary: 'Получение заказов клиента по ID' })
+  @ApiResponse({ status: 200, description: 'Заказы успешно найдены' })
+  @ApiResponse({ status: 404, description: 'Заказы не найдены' })
+  async getClientOrders(@Param('id') clientId: string) {
+    return await this._clientService.getClientOrders(clientId);
+  }
 
   @Post('list')
   @ApiOperation({ summary: 'Поиск клиентов с фильтрами' })
@@ -32,6 +33,15 @@ export class ClientController {
   async clientsList(@Body() getClientDTO: GetClientDTO) {
     return await this._clientService.getClients(getClientDTO);
   }
+
+  @Post('orders/list')
+  @ApiOperation({ summary: 'Поиск заказов с фильтрами' })
+  @ApiResponse({ status: 200, description: 'Заказы успешно найдены' })
+  @ApiResponse({ status: 404, description: 'Заказы не найдены' })
+  async ordderList(@Body() GetOrderDTO: GetOrderDTO) {
+    return await this._clientService.getOrders(GetOrderDTO);
+  }
+
 
   @Post('create')
   @ApiOperation({ summary: 'Создание клиента' })
@@ -55,8 +65,6 @@ export class ClientController {
     return await this._clientService.createOrder(createOrderDTO);
   }
 
-  //Запросы на обновление идут ниже
-
   @Put('update')
   @ApiOperation({ summary: 'Обновление клиента' })
   @ApiResponse({ status: 200, description: 'Клиент успешно обновлен' })
@@ -68,11 +76,28 @@ export class ClientController {
     return await this._clientService.updateClient(updateClientDTO);
   }
 
-
-  @ApiTags('/update-order')
+  @Put('update-order')
   @ApiOperation({ summary: 'Обновление заказа' })
-  @ApiBody({ type: CreateClientDTO })
+  @ApiBody({ type: UpdateOrderDTO })
   async updateOrderClient(@Body() updateClientOrder: UpdateOrderDTO) {
     return await this._clientService.updateOrder(updateClientOrder);
+  }
+
+  @Delete('order/:orderId')
+  @ApiOperation({ summary: 'Мягкое удаление заказа' })
+  @ApiResponse({ status: 200, description: 'Заказ успешно мягко удален' })
+  @ApiResponse({ status: 404, description: 'Заказ не найден' })
+  @ApiResponse({ status: 400, description: 'Заказ уже удален' })
+  async deleteOrderSoftly(@Param('orderId') orderId: string) {
+    return await this._clientService.deleteOrderSoftly(orderId);
+  }
+
+  @Delete(':clientId')
+  @ApiOperation({ summary: 'Мягкое удаление клиента' })
+  @ApiResponse({ status: 200, description: 'Клиент успешно мягко удален' })
+  @ApiResponse({ status: 404, description: 'Клиент не найден' })
+  @ApiResponse({ status: 400, description: 'Клиент уже удален' })
+  async deleteClientSoftly(@Param('clientId') clientId: string) {
+    return await this._clientService.deleteClientSoftly(clientId);
   }
 }
