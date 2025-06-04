@@ -1,3 +1,5 @@
 export * from './create-update-product.dto'
 export * from './create-update-service.dto'
 export * from './create-workers-service.dto'
+export * from './get-services-users.dto'
+export * from './get-services-users.dto'
