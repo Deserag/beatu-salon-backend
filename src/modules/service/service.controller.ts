@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ServiceService } from './service.service';
 import {
@@ -8,18 +16,21 @@ import {
   UpdateProductDTO,
 } from './dto';
 import { GetMeaningDTO } from '../dto';
-import { CreateWorkerOnServiceDTO, UpdateWorkerOnServiceDTO, ServiceIdDTO } from './dto/create-workers-service.dto';
-
+import {
+  CreateWorkerOnServiceDTO,
+  UpdateWorkerOnServiceDTO,
+  ServiceIdDTO,
+} from './dto/create-workers-service.dto';
+import { ServiceWithWorkersDTO } from './dto/get-services-users.dto';
 @ApiTags('service')
 @Controller('service')
 export class ServiceController {
   constructor(private readonly _serviceService: ServiceService) {}
-
-  @Get('worker-on-service/:serviceId/:userId')
-  @ApiOperation({ summary: 'Получение связи услуги и мастера по ID' })
-  @ApiResponse({ status: 200, description: 'Связь успешно получена' })
-  async getWorkerOnServiceByIds(@Param('serviceId') serviceId: string, @Param('userId') userId: string) {
-    return this._serviceService.getWorkerOnServiceByIds(serviceId, userId);
+  @Get('worker-on-service/')
+  @ApiOperation({ summary: 'Получение всех услуг с мастерами' })
+  @ApiResponse({ status: 200, description: 'Услуги успешно получены' })
+  async getAllServicesWithWorkers(): Promise<ServiceWithWorkersDTO[]> {
+    return this._serviceService.getAllServicesWithWorkers();
   }
   @Get('service/:id')
   @ApiOperation({ summary: 'Получение информации об услуге' })
@@ -36,12 +47,6 @@ export class ServiceController {
   async getServicesList(@Body() getServiceDTO: GetMeaningDTO) {
     return this._serviceService.GetServicesList(getServiceDTO);
   }
-  // @Post('worker-on-service/list/:serviceId')
-  // @ApiOperation({ summary: 'Получение мастеров по услуге' })
-  // @ApiResponse({ status: 200, description: 'Мастера успешно получены' })
-  // async getWorkerOnService(@Body() getServiceDTO: GetMeaningDTO){
-  //   return this._serviceService.getWorkerOnServiceByIds(getServiceDTO);
-  // }
 
   @Post('worker-on-service/list')
   @ApiOperation({ summary: 'Получение всех связей Услуг и Мастеров' })
@@ -49,7 +54,6 @@ export class ServiceController {
   async getAllWorkerOnService(@Body() getServiceDTO: GetMeaningDTO) {
     return this._serviceService.getAllWorkerOnService(getServiceDTO);
   }
-
 
   @Post('products-list')
   @ApiOperation({ summary: 'Получение списка товаров' })
@@ -62,7 +66,10 @@ export class ServiceController {
   @Post('create-service')
   @ApiOperation({ summary: 'Создание услуги' })
   @ApiResponse({ status: 201, description: 'Услуга успешно создана' })
-  @ApiResponse({ status: 400, description: 'Недостаточно данных для создания услуги' })
+  @ApiResponse({
+    status: 400,
+    description: 'Недостаточно данных для создания услуги',
+  })
   async createService(@Body() createServiceDTO: CreateServiceDTO) {
     return this._serviceService.CreateService(createServiceDTO);
   }
@@ -77,7 +84,10 @@ export class ServiceController {
   @Post('create-product')
   @ApiOperation({ summary: 'Создание товара' })
   @ApiResponse({ status: 201, description: 'Товар успешно создан' })
-  @ApiResponse({ status: 400, description: 'Недостаточно данных для создания товара' })
+  @ApiResponse({
+    status: 400,
+    description: 'Недостаточно данных для создания товара',
+  })
   async createProduct(@Body() createProductDTO: CreateProductDTO) {
     return this._serviceService.CreateProduct(createProductDTO);
   }
@@ -98,16 +108,12 @@ export class ServiceController {
     return this._serviceService.UpdateProduct(updateProductDTO);
   }
 
-
-
   @Put('worker-on-service')
   @ApiOperation({ summary: 'Обновление связи услуги и мастера' })
   @ApiResponse({ status: 200, description: 'Связь успешно обновлена' })
   async updateWorkerOnService(@Body() dto: UpdateWorkerOnServiceDTO) {
     return this._serviceService.updateWorkerOnService(dto);
   }
-
-
 
   @Delete('delete-service/:id')
   @ApiOperation({ summary: 'Удаление услуги' })
@@ -128,8 +134,10 @@ export class ServiceController {
   @Delete('worker-on-service/:serviceId/:userId')
   @ApiOperation({ summary: 'Удаление связи услуги и мастера' })
   @ApiResponse({ status: 200, description: 'Связь успешно удалена' })
-  async deleteWorkerOnService(@Param('serviceId') serviceId: string, @Param('userId') userId: string) {
+  async deleteWorkerOnService(
+    @Param('serviceId') serviceId: string,
+    @Param('userId') userId: string,
+  ) {
     return this._serviceService.deleteWorkerOnService(serviceId, userId);
   }
-
 }

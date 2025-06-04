@@ -18,7 +18,8 @@ import {
   UpdateWorkerOnServiceDTO,
 } from './dto/create-workers-service.dto';
 import { Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client'; 
+import { Prisma } from '@prisma/client';
+import { ServiceWithWorkersDTO } from './dto/get-services-users.dto';
 @Injectable()
 export class ServiceService {
   private _prisma = new PrismaClient();
@@ -41,67 +42,83 @@ export class ServiceService {
 
   async getAllWorkerOnService(getServiceDTO: GetMeaningDTO) {
     try {
-      const whereCondition = getServiceDTO.name ? { serviceId: getServiceDTO.name } : {};
-      
+      const whereCondition = getServiceDTO.name
+        ? { serviceId: getServiceDTO.name }
+        : {};
+
       const pagination = {
-        skip: getServiceDTO.page && getServiceDTO.size 
-          ? (getServiceDTO.page - 1) * getServiceDTO.size 
-          : undefined,
-        take: getServiceDTO.size ? getServiceDTO.size : undefined
+        skip:
+          getServiceDTO.page && getServiceDTO.size
+            ? (getServiceDTO.page - 1) * getServiceDTO.size
+            : undefined,
+        take: getServiceDTO.size ? getServiceDTO.size : undefined,
       };
 
       const workersOnService = await this._prisma.workerOnService.findMany({
         where: whereCondition,
         include: { worker: true },
-        ...pagination
+        ...pagination,
       });
 
       if (!workersOnService.length) {
         throw new HttpException(
-          getServiceDTO.name 
-            ? 'Мастера для указанной услуги не найдены' 
+          getServiceDTO.name
+            ? 'Мастера для указанной услуги не найдены'
             : 'Мастера не найдены',
-          HttpStatus.NOT_FOUND
+          HttpStatus.NOT_FOUND,
         );
       }
 
       return workersOnService;
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      
-      this.logger.error(`Ошибка при получении мастеров: ${error.message}`, error.stack);
+
+      this.logger.error(
+        `Ошибка при получении мастеров: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
-        error instanceof Prisma.PrismaClientKnownRequestError // Теперь Prisma доступен
+        error instanceof Prisma.PrismaClientKnownRequestError
           ? 'Некорректные параметры запроса'
           : 'Произошла ошибка при получении мастеров',
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
-    }
-  }
-  async getWorkerOnServiceByIds(serviceId: string, userId: string) {
-    try {
-      return this._prisma.workerOnService.findUnique({
-        where: {
-          serviceId_userId: {
-            serviceId,
-            userId,
-          },
-        },
-        include: {
-          worker: true,
-          service: true,
-        },
-      });
-    } catch (error) {
-      throw new Error(`Ошибка при получении связи: ${error.message}`);
     }
   }
 
   async GetProfuctForSaleForId(id: string) {}
 
-  async GetUserProvidingServiceForId(id: string) {}
+  async getAllServicesWithWorkers(): Promise<ServiceWithWorkersDTO[]> {
+    const services = await this._prisma.service.findMany({
+      where: {
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        workersOnService: {
+          select: {
+            worker: {
+              select: {
+                id: true,
+                lastName: true,
+                firstName: true,
+                middleName: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-  async GetService(serviceId: string) {}
+    return services.map((service) => ({
+      id: service.id,
+      name: service.name,
+      workers: service.workersOnService.map((wos) => wos.worker),
+    }));
+  }
+
+  async GetUserProvidingServiceForId(id: string) {}
 
   async GetServicesList(getServiceDTO: GetMeaningDTO) {
     try {
