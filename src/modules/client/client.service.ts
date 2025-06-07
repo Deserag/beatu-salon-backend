@@ -142,6 +142,12 @@ export class ClientService {
     try {
       const { name, page = 1, size = 10 } = getOrder;
 
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
       if (name) {
         const users = await this._prisma.user.findMany({
           where: {
@@ -168,6 +174,10 @@ export class ClientService {
           where: {
             userId: { in: userIds },
             deletedAt: null,
+            dateTime: {
+              gte: todayStart,
+              lte: todayEnd,
+            },
           },
           include: {
             user: true,
@@ -191,6 +201,10 @@ export class ClientService {
           this._prisma.serviceRecord.findMany({
             where: {
               deletedAt: null,
+              dateTime: {
+                gte: todayStart,
+                lte: todayEnd,
+              },
             },
             skip: (page - 1) * size,
             take: size,
@@ -206,6 +220,10 @@ export class ClientService {
           this._prisma.serviceRecord.count({
             where: {
               deletedAt: null,
+              dateTime: {
+                gte: todayStart,
+                lte: todayEnd,
+              },
             },
           }),
         ]);
