@@ -74,22 +74,45 @@ export class RecordService {
   async CreateRecord(dto: CreateRecordDTO) {
     const workerHasService = await this._prisma.workerOnService.findUnique({
       where: {
-        serviceId_userId: { serviceId: dto.serviceId, userId: dto.workerId },
+        serviceId_userId: {
+          serviceId: dto.serviceId,
+          userId: dto.masterId,
+        },
       },
     });
-    if (!workerHasService)
-      throw new BadRequestException('Мастер не предоставляет эту услугу');
 
-    const conflict = await this._prisma.serviceRecord.findFirst({
-      where: {
-        workerId: dto.workerId,
-        dateTime: dto.dateTime,
-        deletedAt: null,
+    if (!workerHasService) {
+      throw new BadRequestException(
+        'The selected master does not provide this service.',
+      );
+    }
+
+    if (!dto.cabinetId) {
+      throw new BadRequestException('Cabinet ID is required.');
+    }
+
+    const record = await this._prisma.serviceRecord.create({
+      data: {
+        user: {
+          connect: { id: dto.clientId },
+        },
+        worker: {
+          connect: { id: dto.masterId },
+        },
+        service: {
+          connect: { id: dto.serviceId },
+        },
+        office: {
+          connect: { id: dto.officeId },
+        },
+        cabinet: {
+          connect: { id: dto.cabinetId },
+        },
+        dateTime: new Date(dto.dateTime),
       },
     });
-    if (conflict) throw new BadRequestException('Мастер занят на это время');
 
-    return this._prisma.serviceRecord.create({ data: dto });
+    return record;
   }
 
   async UpdateRecord(dto: UpdateRecordDTO) {
@@ -101,7 +124,7 @@ export class RecordService {
 
     const workerHasService = await this._prisma.workerOnService.findUnique({
       where: {
-        serviceId_userId: { serviceId: dto.serviceId, userId: dto.workerId },
+        serviceId_userId: { serviceId: dto.serviceId, userId: dto.masterId },
       },
     });
     if (!workerHasService)
@@ -109,7 +132,7 @@ export class RecordService {
 
     const conflict = await this._prisma.serviceRecord.findFirst({
       where: {
-        workerId: dto.workerId,
+        workerId: dto.masterId,
         dateTime: dto.dateTime,
         deletedAt: null,
         NOT: { id: dto.id },

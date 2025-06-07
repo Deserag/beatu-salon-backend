@@ -8,7 +8,6 @@ import {
   IsEnum,
 } from 'class-validator';
 
-
 export enum EStatusRecord {
   CANCELED = 'CANCELED',
   DONE = 'DONE',
@@ -20,12 +19,12 @@ export class CreateRecordDTO {
   serviceId: string;
 
   @IsUUID()
-  @ApiProperty({ example: 'uuid-worker-id' })
-  workerId: string;
+  @ApiProperty({ example: 'uuid-master-id' })
+  masterId: string;
 
   @IsUUID()
   @ApiProperty({ example: 'uuid-client-id' })
-  userId: string;
+  clientId: string;
 
   @IsUUID()
   @ApiProperty({ example: 'uuid-office-id' })
@@ -33,7 +32,7 @@ export class CreateRecordDTO {
 
   @IsUUID()
   @ApiProperty({ example: 'uuid-cabinet-id' })
-  workCabinetId: string;
+  cabinetId: string;
 
   @IsDateString()
   @ApiProperty({ example: '2025-06-09T09:00:00.000Z' })
@@ -51,8 +50,8 @@ export class ChangeRecordStatusDTO {
   @ApiProperty({ example: 'uuid-record-id' })
   id: string;
 
-    @IsEnum(EStatusRecord)
-    @ApiProperty({ example: 'DONE', enum: EStatusRecord })
+  @IsEnum(EStatusRecord)
+  @ApiProperty({ example: 'DONE', enum: EStatusRecord })
   status: EStatusRecord;
 }
 
