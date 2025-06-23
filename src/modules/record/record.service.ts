@@ -83,12 +83,12 @@ export class RecordService {
 
     if (!workerHasService) {
       throw new BadRequestException(
-        'The selected master does not provide this service.',
+        'Выбранный мастер не предоставляет услугу',
       );
     }
 
     if (!dto.cabinetId) {
-      throw new BadRequestException('Cabinet ID is required.');
+      throw new BadRequestException('Cabinet ID не задан');
     }
 
     const record = await this._prisma.serviceRecord.create({

@@ -139,6 +139,7 @@ export class UserService {
             roleId: {
               not: role.id,
             },
+            deletedAt: null,
             OR: [
               { firstName: { contains: name, mode: 'insensitive' } },
               { lastName: { contains: name, mode: 'insensitive' } },
@@ -169,6 +170,7 @@ export class UserService {
               roleId: {
                 not: role.id,
               },
+              deletedAt: null,
             },
             skip: (page - 1) * size,
             take: size,
@@ -721,24 +723,47 @@ export class UserService {
         select: { roleId: true },
       });
 
+      if (!user) {
+        throw new HttpException(
+          'Пользователь не найден.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
       const role = await this._prisma.role.findUnique({
         where: { id: user.roleId },
       });
-      if (role.name == 'ADMIN' || role.name == 'Manager') {
+
+      if (!role) {
         throw new HttpException(
-          'У вас нет прав для удаления ролей',
+          'Роль пользователя не найдена.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (role.name === 'ADMIN' || role.name === 'Manager') {
+        throw new HttpException(
+          'У вас нет прав для удаления ролей.',
           HttpStatus.FORBIDDEN,
         );
       }
-      const deletedRole = await this._prisma.role.delete({
+
+      const softDeletedRole = await this._prisma.role.update({
         where: {
           id: deleteRoleDTO.roleId,
         },
+        data: {
+          deletedAt: new Date(),
+        },
       });
-      return deletedRole;
+
+      return softDeletedRole;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
-        'Ошибка при удалении роли:' + error.message,
+        'Ошибка при мягком удалении роли: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -747,28 +772,51 @@ export class UserService {
   async deleteUser(deleteUserDTO: DeleteUserDTO) {
     try {
       const user = await this._prisma.user.findUnique({
-        where: { id: deleteUserDTO.userId },
+        where: { id: deleteUserDTO.adminId },
         select: { roleId: true },
       });
+
+      if (!user) {
+        throw new HttpException(
+          'Пользователь не найден.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
 
       const role = await this._prisma.role.findUnique({
         where: { id: user.roleId },
       });
-      if (role.name !== 'ADMIN' && role.name !== 'Manager') {
+
+      if (!role) {
         throw new HttpException(
-          'У вас нет прав для удаления пользователей',
+          'Роль пользователя не найдена.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (role.name !== 'ADMIN' && role.name !== 'SuperAdmin') {
+        throw new HttpException(
+          'У вас нет прав для удаления пользователей.',
           HttpStatus.FORBIDDEN,
         );
       }
-      const deletedUser = await this._prisma.user.delete({
+
+      const softDeletedUser = await this._prisma.user.update({
         where: {
           id: deleteUserDTO.userId,
         },
+        data: {
+          deletedAt: new Date(),
+        },
       });
-      return deletedUser;
+
+      return softDeletedUser;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
-        'Ошибка при удалении пользователя:' + error.message,
+        'Ошибка при мягком удалении пользователя: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
