@@ -52,13 +52,47 @@ export class RecordService {
             service: true,
             worker: true,
             office: true,
+            cabinet: true,
           },
         }),
         this._prisma.serviceRecord.count({ where: whereClause }),
       ]);
 
+      const recordIds = rows.map((r) => ({
+        userId: r.userId,
+        serviceId: r.serviceId,
+      }));
+
+      const validGrades = ['VERY_BAD', 'BAD', 'OK', 'GOOD', 'EXCELLENT'];
+
+      const reviews = await this._prisma.review.findMany({
+        where: {
+          OR: recordIds.map((r) => ({
+            userId: r.userId,
+            serviceId: r.serviceId,
+          })),
+          grade: {
+            in: validGrades as any, 
+          },
+        },
+        select: {
+          userId: true,
+          serviceId: true,
+          grade: true,
+        },
+      });
+      const rowsWithGrade = rows.map((record) => {
+        const review = reviews.find(
+          (r) => r.userId === record.userId && r.serviceId === record.serviceId,
+        );
+        return {
+          ...record,
+          grade: review?.grade ?? null,
+        };
+      });
+
       return {
-        rows,
+        rows: rowsWithGrade,
         totalCount,
         totalPages: Math.ceil(totalCount / size),
         currentPage: page,
@@ -82,9 +116,7 @@ export class RecordService {
     });
 
     if (!workerHasService) {
-      throw new BadRequestException(
-        'Выбранный мастер не предоставляет услугу',
-      );
+      throw new BadRequestException('Выбранный мастер не предоставляет услугу');
     }
 
     if (!dto.cabinetId) {
